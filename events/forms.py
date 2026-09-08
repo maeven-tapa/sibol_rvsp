@@ -23,7 +23,7 @@ class SignUpForm(forms.ModelForm):
         value = self.cleaned_data["username"].strip().upper()
         if User.objects.filter(username__iexact=value).exists():
             raise forms.ValidationError("This student ID already has an account. Please sign in.")
-        if not Student.objects.filter(tupc_id=value).exists():
+        if not Student.objects.filter(tupc_id=value, is_active=True, archived_ceremony__isnull=True).exists():
             raise forms.ValidationError("This TUP ID is not on the student roster. Please contact the administrator.")
         return value
 
@@ -34,7 +34,7 @@ class SignUpForm(forms.ModelForm):
         if commit:
             user.save()
         if commit:
-            student = Student.objects.get(tupc_id=user.username)
+            student = Student.objects.get(tupc_id=user.username, archived_ceremony__isnull=True)
             user.first_name, _, user.last_name = student.name.partition(' ')
             user.save(update_fields=['first_name', 'last_name'])
             StudentProfile.objects.create(user=user, student=student, contact_number=self.cleaned_data["contact_number"])
@@ -52,7 +52,14 @@ class StudentForm(forms.ModelForm):
         fields = ('tupc_id', 'name', 'course', 'section')
 
     def clean_tupc_id(self):
-        return self.cleaned_data['tupc_id'].upper()
+        value = self.cleaned_data['tupc_id'].upper()
+        accounts = User.objects.filter(username__iexact=value)
+        profile = getattr(self.instance, 'profile', None)
+        if profile:
+            accounts = accounts.exclude(pk=profile.user_id)
+        if accounts.exists():
+            raise forms.ValidationError('This TUP ID already belongs to an account.')
+        return value
 
 
 class FacultyForm(forms.ModelForm):
@@ -71,6 +78,8 @@ class FacultyForm(forms.ModelForm):
 
 
 class CeremonyForm(forms.ModelForm):
+    commencement_number = forms.IntegerField(min_value=1, label='Commencement number')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['campus'].widget = forms.HiddenInput()
@@ -81,12 +90,23 @@ class CeremonyForm(forms.ModelForm):
 
     class Meta:
         model = Ceremony
-        fields = ('title', 'theme', 'batch_name', 'commencement_number', 'campus', 'starts_at', 'venue')
+        fields = ('theme', 'batch_name', 'commencement_number', 'campus', 'starts_at', 'venue')
         labels = {'starts_at': 'Ceremony date & time (Philippine time)'}
         widgets = {'starts_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M')}
 
+    def save(self, commit=True):
+        ceremony = super().save(commit=False)
+        ceremony.title = f'The {ceremony.commencement_ordinal} Commencement Exercise'
+        if commit:
+            ceremony.save()
+        return ceremony
+
 
 class ProgramItemForm(forms.ModelForm):
+    def clean_speaker(self):
+        value = self.cleaned_data['speaker'].strip()
+        return '' if value.lower() in ('na', 'n/a') else value
+
     class Meta:
         model = ProgramItem
         fields = ('item_type', 'title', 'description', 'speaker', 'hymn_language')
@@ -108,6 +128,10 @@ class AccessCodeForm(forms.Form):
 
 
 class AdminLoginForm(AuthenticationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password'].widget.attrs['placeholder'] = 'Enter your password'
+
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
         if not user.is_staff:

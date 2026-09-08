@@ -77,24 +77,24 @@ class CeremonyTests(TestCase):
 
     def test_staff_can_add_roster_student(self):
         self.client.force_login(self.admin)
-        self.client.post('/dashboard/', {'action':'ceremony','title':'Sibol 2027','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Auditorium'})
+        self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Sibol 2027','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Auditorium'})
         response = self.client.post('/dashboard/', {'action':'student','tupc_id':'TUPC-22-0001','name':'Alex Reyes','course':'BSIT','section':'4B'})
         self.assertRedirects(response, '/dashboard/')
         self.assertTrue(Student.objects.filter(tupc_id='TUPC-22-0001').exists())
 
     def test_only_staff_can_manage_ceremonies(self):
         self.client.force_login(self.attendee)
-        response = self.client.post('/dashboard/', {'action':'ceremony','title':'Unauthorized','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'Hall'})
+        response = self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Unauthorized','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'Hall'})
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Ceremony.objects.exists())
 
     def test_ceremony_drives_home_tickets_and_gate(self):
         self.client.force_login(self.admin)
-        self.client.post('/dashboard/', {'action':'ceremony','title':'Sibol 2027','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Auditorium'})
+        self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Sibol 2027','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Auditorium'})
         ceremony = Ceremony.objects.get(is_active=True)
         self.client.logout()
         response = self.client.get('/')
-        self.assertContains(response, 'Sibol 2027')
+        self.assertContains(response, 'The 2nd Commencement Exercise')
         self.assertContains(response, 'New Auditorium')
         self.assertContains(response, 'class="info-card')
         self.client.force_login(self.attendee)
@@ -104,7 +104,7 @@ class CeremonyTests(TestCase):
         self.assertEqual(ticket.ceremony, ceremony)
         self.assertContains(self.client.get('/tickets/'), 'New Auditorium')
         self.client.force_login(self.admin)
-        self.client.post('/dashboard/', {'action':'ceremony','title':'Sibol 2028','campus':'Taguig','starts_at':'2028-06-01T16:00','venue':'Next Hall'})
+        self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Sibol 2028','campus':'Taguig','starts_at':'2028-06-01T16:00','venue':'Next Hall'})
         self.assertEqual(Ceremony.objects.filter(is_active=True).count(), 1)
         self.client.post('/gate/', {'mode':'verify','duration':'1'})
         response = self.client.post('/gate/scan/', {'code':ticket.code})
@@ -202,7 +202,7 @@ class CeremonyHistoryTests(TestCase):
         self.client.post('/dashboard/', {'action': 'faculty', 'employee_id': 'EMP-HISTORY', 'name': 'Original Faculty', 'email': 'faculty@example.com', 'department': 'Registrar', 'campus': 'Manila'})
         ticket = Ticket.objects.get(ticket_type='FACULTY')
         response = self.client.post('/dashboard/', {'action': 'close_ceremony'})
-        history_url = f'/dashboard/?ceremony={self.ceremony.pk}'
+        history_url = f'/history/?ceremony={self.ceremony.pk}'
         self.assertRedirects(response, history_url)
         self.ceremony.refresh_from_db()
         self.assertIsNotNone(self.ceremony.completed_at)
@@ -231,7 +231,31 @@ class CeremonyHistoryTests(TestCase):
 
     def test_invalid_or_active_history_selection_rejected(self):
         for value in ['invalid', '999999', str(self.ceremony.pk)]:
-            self.assertEqual(self.client.get('/dashboard/', {'ceremony': value}).status_code, 404)
+            self.assertEqual(self.client.get('/history/', {'ceremony': value}).status_code, 404)
+
+    def test_history_landing_and_dashboard_are_separate(self):
+        response = self.client.get('/history/')
+        self.assertContains(response, 'No past ceremonies yet.')
+        self.assertNotContains(response, 'id="ceremony-form"')
+        self.assertNotContains(response, 'Expected participants')
+        self.assertEqual(self.client.post('/history/', {'action': 'close_ceremony'}).status_code, 405)
+        self.ceremony.refresh_from_db()
+        self.assertTrue(self.ceremony.is_active)
+        response = self.client.get('/dashboard/')
+        self.assertContains(response, 'href="/history/"')
+        self.assertNotContains(response, 'id="ceremony-history"')
+        self.client.post('/dashboard/', {'action': 'close_ceremony'})
+        response = self.client.get('/history/')
+        self.assertContains(response, 'Choose a ceremony above')
+        self.assertContains(response, 'Historic graduation')
+        self.assertNotContains(response, 'id="ceremony-form"')
+        self.assertRedirects(self.client.get(f'/dashboard/?ceremony={self.ceremony.pk}'), f'/history/?ceremony={self.ceremony.pk}')
+
+    def test_history_requires_staff(self):
+        self.client.logout()
+        self.assertEqual(self.client.get('/history/').status_code, 302)
+        self.client.force_login(User.objects.create_user('history-student'))
+        self.assertEqual(self.client.get('/history/').status_code, 302)
 
     def test_faculty_email_validation(self):
         data = {'action': 'faculty', 'employee_id': 'EMP-EMAIL', 'name': 'Faculty', 'department': 'Registrar', 'campus': 'Manila'}
@@ -244,7 +268,7 @@ class CeremonyHistoryTests(TestCase):
     def test_legacy_completed_ceremony_is_available(self):
         self.ceremony.is_active = False
         self.ceremony.save()
-        response = self.client.get('/dashboard/', {'ceremony': self.ceremony.pk})
+        response = self.client.get('/history/', {'ceremony': self.ceremony.pk})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Historic graduation')
         self.assertContains(response, 'No students recorded for this ceremony.')
@@ -287,7 +311,7 @@ class DashboardTableTests(TestCase):
 
     def test_history_search_and_page_links_preserve_selection(self):
         self.client.post('/dashboard/', {'action': 'close_ceremony'})
-        response = self.client.get('/dashboard/', {'ceremony': self.ceremony.pk, 'students_q': 'Student', 'faculty_q': 'faculty30@example.com', 'students_page': 2})
+        response = self.client.get('/history/', {'ceremony': self.ceremony.pk, 'students_q': 'Student', 'faculty_q': 'faculty30@example.com', 'students_page': 2})
         self.assertEqual(len(response.context['students']), 11)
         self.assertEqual(len(response.context['faculty_accounts']), 1)
         self.assertIn(f'ceremony={self.ceremony.pk}', response.context['student_table']['previous'])
@@ -362,3 +386,229 @@ class AccessCodeTests(TestCase):
         for _ in range(9):
             self.client.post('/login/', {'access_code': 'TUPT-Z9Z9'})
         self.assertContains(self.client.post('/login/', {'access_code': code}), 'Too many attempts')
+
+
+class StudentActionTests(TestCase):
+    def setUp(self):
+        from .models import StudentProfile
+        self.admin = User.objects.create_user('student-manager', is_staff=True)
+        self.client.force_login(self.admin)
+        self.ceremony = Ceremony.objects.create(title='Current', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.student = Student.objects.create(tupc_id='TUP-22-9000', name='Original Name', course='BSIT', section='4A')
+        self.user = User.objects.create_user(self.student.tupc_id)
+        self.profile = StudentProfile.objects.create(student=self.student, user=self.user, contact_number='09123456789')
+        self.ticket = Ticket.objects.create(owner=self.user, ceremony=self.ceremony, ticket_type='STUDENT')
+
+    def test_edit_updates_roster_and_account(self):
+        response = self.client.post('/dashboard/', {'action': 'student_edit', 'student_id': self.student.pk, 'edit-tupc_id': 'TUP-22-9001', 'edit-name': 'Updated Name', 'edit-course': 'BSEE', 'edit-section': '4B'})
+        self.assertRedirects(response, '/dashboard/')
+        self.student.refresh_from_db()
+        self.user.refresh_from_db()
+        self.assertEqual(self.student.course, 'BSEE')
+        self.assertEqual(self.student.section, '4B')
+        self.assertEqual(self.user.username, 'TUP-22-9001')
+        self.assertEqual(self.user.get_full_name(), 'Updated Name')
+        self.assertEqual(Ticket.objects.get(pk=self.ticket.pk).owner_id, self.user.pk)
+
+    def test_invalid_edit_reopens_panel_without_saving(self):
+        response = self.client.post('/dashboard/', {'action': 'student_edit', 'student_id': self.student.pk, 'edit-tupc_id': 'invalid', 'edit-name': 'Changed', 'edit-course': 'BSIT', 'edit-section': '4A'})
+        self.assertEqual(response.context['open_modal'], 'studentEditModal')
+        self.assertTrue(response.context['student_edit_form'].errors)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.name, 'Original Name')
+
+    def test_disable_enable_and_registration_check(self):
+        self.client.post('/dashboard/', {'action': 'student_disable', 'student_id': self.student.pk})
+        self.student.refresh_from_db()
+        self.user.refresh_from_db()
+        self.assertFalse(self.student.is_active)
+        self.assertFalse(self.user.is_active)
+        self.assertContains(self.client.get('/dashboard/'), 'Enable student')
+        self.client.post('/dashboard/', {'action': 'student_enable', 'student_id': self.student.pk})
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        unregistered = Student.objects.create(tupc_id='TUP-22-9002', name='New Student', course='BSIT', section='4A')
+        self.client.post('/dashboard/', {'action': 'student_disable', 'student_id': unregistered.pk})
+        self.assertEqual(self.client.post('/register/check-id/', {'tupc_id': unregistered.tupc_id}).status_code, 400)
+        form = SignUpForm()
+        form.cleaned_data = {'username': unregistered.tupc_id}
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            form.clean_username()
+
+    def test_delete_retains_ticket_and_account_record(self):
+        self.assertRedirects(self.client.post('/dashboard/', {'action': 'student_delete', 'student_id': self.student.pk}), '/dashboard/')
+        self.assertFalse(Student.objects.filter(pk=self.student.pk).exists())
+        self.profile.refresh_from_db()
+        self.user.refresh_from_db()
+        self.assertIsNone(self.profile.student_id)
+        self.assertFalse(self.user.is_active)
+        self.assertTrue(Ticket.objects.filter(pk=self.ticket.pk).exists())
+
+    def test_actions_require_staff_and_current_dashboard(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post('/dashboard/', {'action': 'student_delete', 'student_id': self.student.pk}).status_code, 302)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post('/history/', {'action': 'student_delete', 'student_id': self.student.pk}).status_code, 405)
+        self.assertTrue(Student.objects.filter(pk=self.student.pk).exists())
+
+
+class ProgramEditorTests(TestCase):
+    def setUp(self):
+        from .models import ProgramItem
+        self.admin = User.objects.create_user('program-editor', is_staff=True)
+        self.client.force_login(self.admin)
+        self.ceremony = Ceremony.objects.create(title='Program', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.first = ProgramItem.objects.create(ceremony=self.ceremony, item_type='speaker', title='First', speaker='N/A', position=0)
+        self.second = ProgramItem.objects.create(ceremony=self.ceremony, item_type='song', title='Second', position=1)
+
+    def save_items(self, items):
+        import json
+        return self.client.post('/dashboard/', {'action': 'program_flow_save', 'items': json.dumps(items)})
+
+    def test_batch_add_edit_reorder_and_remove(self):
+        response = self.save_items([
+            {'id': self.second.pk, 'item_type': 'song', 'title': 'Second updated', 'speaker': ' n/a ', 'hymn_language': 'english'},
+            {'item_type': 'speaker', 'title': 'New speaker', 'speaker': 'Dean'},
+        ])
+        self.assertEqual(response.status_code, 200)
+        rows = list(self.ceremony.program_items.all())
+        self.assertEqual([row.title for row in rows], ['Second updated', 'New speaker'])
+        self.assertEqual([row.position for row in rows], [0, 1])
+        self.assertEqual(rows[0].speaker, '')
+        self.assertFalse(self.ceremony.program_items.filter(pk=self.first.pk).exists())
+        response = self.client.get('/program-flow/')
+        self.assertContains(response, 'Dean')
+        self.assertLess(response.content.index(b'Second updated'), response.content.index(b'New speaker'))
+
+    def test_invalid_batch_leaves_existing_program_unchanged(self):
+        response = self.save_items([{'id': self.first.pk, 'item_type': 'speaker', 'title': 'Changed'}, {'item_type': 'invalid', 'title': ''}])
+        self.assertEqual(response.status_code, 400)
+        self.first.refresh_from_db()
+        self.assertEqual(self.first.title, 'First')
+        self.assertEqual(self.ceremony.program_items.count(), 2)
+        self.assertEqual(self.save_items([{'id': 99999, 'item_type': 'song', 'title': 'Invalid'}]).status_code, 400)
+        self.assertEqual(self.save_items({'title': 'bad'}).status_code, 400)
+
+    def test_speaker_placeholders_hidden_and_normalized(self):
+        from .forms import ProgramItemForm
+        for speaker in ['NA', 'na', 'N/A', ' n/a ', '']:
+            form = ProgramItemForm({'item_type': 'speaker', 'title': 'Welcome', 'speaker': speaker})
+            self.assertTrue(form.is_valid())
+            self.assertEqual(form.cleaned_data['speaker'], '')
+        self.assertNotContains(self.client.get('/program-flow/'), 'SPEAKER:')
+        self.assertContains(self.client.get('/dashboard/'), 'program-draft-list')
+
+    def test_history_and_nonstaff_cannot_save(self):
+        self.assertEqual(self.client.post('/history/', {'action': 'program_flow_save', 'items': '[]'}).status_code, 405)
+        self.client.force_login(User.objects.create_user('program-student'))
+        self.assertEqual(self.save_items([]).status_code, 302)
+        self.assertEqual(self.ceremony.program_items.count(), 2)
+
+
+class CeremonyArchiveLifecycleTests(TestCase):
+    def setUp(self):
+        from .models import StudentProfile
+        self.admin = User.objects.create_user('archive-admin', is_staff=True)
+        self.client.force_login(self.admin)
+        self.ceremony = Ceremony.objects.create(title='First ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.student = Student.objects.create(tupc_id='TUP-22-7777', name='Archived Student', course='BSIT', section='4A')
+        self.user = User.objects.create_user(self.student.tupc_id)
+        StudentProfile.objects.create(user=self.user, student=self.student, contact_number='09123456789')
+        self.ticket = Ticket.objects.create(owner=self.user, ceremony=self.ceremony, ticket_type='STUDENT')
+        self.client.post('/dashboard/', {'action':'faculty', 'employee_id':'ARCH-001', 'name':'Archived Faculty', 'email':'archive@example.com', 'department':'Registrar', 'campus':'Manila'})
+        self.faculty = Faculty.objects.get(employee_id='ARCH-001')
+
+    def test_completion_archives_and_next_ceremony_starts_empty(self):
+        from .views import ensure_student_ticket
+        self.client.post('/dashboard/', {'action':'close_ceremony'})
+        self.student.refresh_from_db()
+        self.faculty.refresh_from_db()
+        self.user.refresh_from_db()
+        self.faculty.user.refresh_from_db()
+        self.assertEqual(self.student.archived_ceremony_id, self.ceremony.pk)
+        self.assertEqual(self.faculty.archived_ceremony_id, self.ceremony.pk)
+        self.assertFalse(self.user.is_active)
+        self.assertFalse(self.faculty.user.is_active)
+        self.assertTrue(Ticket.objects.filter(pk=self.ticket.pk).exists())
+        history = self.client.get('/history/', {'ceremony': self.ceremony.pk})
+        for text in ['Archived Student', 'Archived Faculty', self.ticket.code]:
+            self.assertContains(history, text)
+        self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Second ceremony','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Hall'})
+        new = Ceremony.objects.get(is_active=True)
+        dashboard = self.client.get('/dashboard/')
+        self.assertEqual(dashboard.context['total'], 0)
+        self.assertEqual(dashboard.context['students'].paginator.count, 0)
+        self.assertEqual(dashboard.context['faculty_accounts'].paginator.count, 0)
+        ensure_student_ticket(self.user, new)
+        self.assertFalse(new.tickets.exists())
+        self.assertEqual(self.client.post('/dashboard/', {'action':'student_enable', 'student_id':self.student.pk}).status_code, 404)
+        self.client.post('/dashboard/', {'action':'student','tupc_id':'TUP-23-8888','name':'New Student','course':'BSIT','section':'4B'})
+        dashboard = self.client.get('/dashboard/')
+        self.assertEqual(dashboard.context['students'].paginator.count, 1)
+        self.assertNotContains(dashboard, 'Archived Student')
+        self.client.post('/dashboard/', {'action':'close_ceremony'})
+        history = self.client.get('/history/', {'ceremony':new.pk})
+        self.assertContains(history, 'New Student')
+        self.assertNotContains(history, 'Archived Student')
+        self.assertContains(self.client.get('/history/', {'ceremony':self.ceremony.pk}), 'Archived Student')
+
+    def test_archived_unregistered_student_cannot_register(self):
+        from .forms import SignUpForm
+        from django.core.exceptions import ValidationError
+        unregistered = Student.objects.create(tupc_id='TUP-22-7778', name='Unregistered', course='BSIT', section='4A')
+        self.client.post('/dashboard/', {'action':'close_ceremony'})
+        self.assertEqual(self.client.post('/register/check-id/', {'tupc_id':unregistered.tupc_id}).status_code, 400)
+        form = SignUpForm()
+        form.cleaned_data = {'username':unregistered.tupc_id}
+        with self.assertRaises(ValidationError):
+            form.clean_username()
+
+    def test_program_button_changes_after_save_without_dashboard_card(self):
+        import json
+        response = self.client.get('/dashboard/')
+        self.assertContains(response, '+ Add program flow')
+        self.assertNotContains(response, 'class="program-summary"')
+        payload = [{'item_type':'speaker','title':'Opening address','speaker':'Dean'}]
+        self.assertEqual(self.client.post('/dashboard/', {'action':'program_flow_save','items':json.dumps(payload)}).status_code, 200)
+        response = self.client.get('/dashboard/')
+        self.assertContains(response, 'Edit program flow')
+        self.assertNotContains(response, '+ Add program flow')
+        self.assertNotContains(response, 'class="program-summary"')
+        self.client.post('/dashboard/', {'action':'close_ceremony'})
+        history = self.client.get('/history/', {'ceremony':self.ceremony.pk})
+        self.assertContains(history, 'Opening address')
+        self.assertContains(history, 'class="program-summary"')
+
+
+class CeremonyTitleTests(TestCase):
+    def test_number_generates_title_with_correct_ordinal(self):
+        from .forms import CeremonyForm
+        for number, ordinal in [(1,'1st'),(2,'2nd'),(3,'3rd'),(11,'11th'),(12,'12th'),(13,'13th'),(21,'21st'),(112,'112th')]:
+            form = CeremonyForm({'commencement_number':number, 'title':'Ignored manual title', 'campus':'Manila', 'starts_at':'2027-06-01T16:00', 'venue':'Hall'})
+            self.assertTrue(form.is_valid(), form.errors)
+            self.assertNotIn('title', form.fields)
+            self.assertEqual(form.save(commit=False).title, f'The {ordinal} Commencement Exercise')
+
+    def test_number_is_required_and_positive(self):
+        from .forms import CeremonyForm
+        for number in ['', '0', '-1']:
+            form = CeremonyForm({'commencement_number':number, 'campus':'Manila', 'starts_at':'2027-06-01T16:00', 'venue':'Hall'})
+            self.assertFalse(form.is_valid())
+            self.assertIn('commencement_number', form.errors)
+
+
+class StudentVerificationLabelTests(TestCase):
+    def test_label_changes_only_after_portal_registration(self):
+        from django.test import Client
+        admin = User.objects.create_user('verification-admin', is_staff=True)
+        Ceremony.objects.create(title='Ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
+        Student.objects.create(tupc_id='TUP-22-6543', name='Portal Student', course='BSIT', section='4A')
+        self.client.force_login(admin)
+        self.assertContains(self.client.get('/dashboard/'), '>Not Verified</span>')
+        portal = Client()
+        response = portal.post('/register/', {'username':'TUP-22-6543', 'first_name':'Portal', 'last_name':'Student', 'email':'portal@example.com', 'contact_number':'09123456789'})
+        self.assertEqual(response.status_code, 302)
+        dashboard = self.client.get('/dashboard/')
+        self.assertContains(dashboard, '>Verified</span>')
+        self.assertNotContains(dashboard, '>Account created</span>')

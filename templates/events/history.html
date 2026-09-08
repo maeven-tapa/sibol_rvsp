@@ -1,0 +1,18 @@
+{% extends 'events/dashboard.html' %}
+{% block title %}History — Sibol{% endblock %}
+{% block overview_heading %}
+<div class="mb-4"><span class="overline">ADMINISTRATION</span><h1>History</h1><p class="text-white">Select a past ceremony to view its overview and records.</p></div>
+<section class="panel-card mb-4">
+  <form method="get" action="{% url 'history' %}" class="d-flex align-items-end gap-3 flex-wrap">
+    <div class="flex-grow-1">
+      <label class="form-label" for="ceremony-history">Ceremony history</label>
+      <select class="form-select" id="ceremony-history" name="ceremony" onchange="this.form.requestSubmit()">
+        <option value="">Select a ceremony</option>
+        {% for past in ceremonies %}<option value="{{ past.pk }}" {% if ceremony.pk == past.pk %}selected{% endif %}>{{ past.title }} · {{ past.starts_at|date:'M d, Y' }} · {{ past.campus }}{% if past.completed_at %} · Completed{% else %} · Past{% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-outline-brand" type="submit">View ceremony</button>
+  </form>
+</section>
+{% if not ceremonies %}<section class="panel-card"><p class="text-muted mb-0">No past ceremonies yet. Completed ceremonies will appear here.</p></section>{% elif not ceremony %}<section class="panel-card"><p class="text-muted mb-0">Choose a ceremony above to display its statistics, program flow, tickets, students, and faculty.</p></section>{% endif %}
+{% endblock %}

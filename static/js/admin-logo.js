@@ -31,24 +31,3 @@
     window.addEventListener('pageshow', event => { if (event.persisted) { cancel(); held = opening = false; document.documentElement.classList.remove('page-transition-admin'); } });
   });
 })();
-
-document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('programItemModal');
-  const dialog = modal?.querySelector('.modal-dialog');
-  const handle = modal?.querySelector('.modal-header');
-  if (!dialog || !handle) return;
-  let startX, startY, initialX, initialY;
-  handle.addEventListener('pointerdown', event => {
-    if (event.target.closest('button, input, select, textarea')) return;
-    const box = dialog.getBoundingClientRect();
-    startX = event.clientX; startY = event.clientY; initialX = box.left; initialY = box.top;
-    dialog.style.position = 'fixed'; dialog.style.margin = '0'; dialog.style.left = `${initialX}px`; dialog.style.top = `${initialY}px`;
-    handle.setPointerCapture(event.pointerId);
-  });
-  handle.addEventListener('pointermove', event => {
-    if (startX === undefined) return;
-    dialog.style.left = `${initialX + event.clientX - startX}px`;
-    dialog.style.top = `${initialY + event.clientY - startY}px`;
-  });
-  handle.addEventListener('pointerup', () => { startX = undefined; });
-});

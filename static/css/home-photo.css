@@ -19,3 +19,14 @@ body:has(.home-photo)>nav.navbar{padding-inline:calc(max(0px,(100% - var(--home-
 @media(prefers-reduced-motion:reduce){.home-photo .hero-medal{animation:none}}
 .home-photo .graduation-info .row{justify-content:center}.graduation-progress{position:relative;display:flex;justify-content:space-between;align-items:center;margin-top:26px;padding:0 5px}.graduation-progress:before{content:'';position:absolute;left:16px;right:16px;top:50%;height:5px;border-radius:10px;background:#e8eef4;transform:translateY(-50%)}.graduation-progress i{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#a7112b;color:#fff;font-style:normal;font-size:15px;box-shadow:0 0 0 4px #fff}.graduation-progress i:last-child{background:#1f7654}.graduation-progress span{position:relative;z-index:1;width:42%;height:5px;background:linear-gradient(90deg,#a7112b,#eac66f);border-radius:10px}
 .home-photo .info-card{justify-content:center}.home-photo .info-card .info-note{margin-top:18px}
+
+/* Equal card dimensions, with centered content at every screen size. */
+.home-photo .graduation-info > .row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:24px;margin:0}
+.home-photo .graduation-info > .row > div{display:flex;width:100%;min-width:0;margin:0;padding:0}
+.home-photo .info-card{width:100%;height:100%;min-height:350px;text-align:center;justify-content:center;overflow-wrap:anywhere}
+.home-photo .participant-total{flex-direction:column;align-items:center;justify-content:center;gap:6px;margin:20px 0}
+.home-photo .participant-breakdown{gap:10px;padding-top:20px}
+.home-photo .participant-breakdown > div{min-width:0;padding:14px 8px}
+.home-photo .info-card .info-note{margin:18px 0 0}
+.home-photo .ceremony-item{flex-direction:column;align-items:center;justify-content:center;gap:6px}
+@media(max-width:991px){.home-photo .graduation-info > .row{grid-template-columns:minmax(0,1fr)}}

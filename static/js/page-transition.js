@@ -52,11 +52,12 @@
       const opensAuth = fromHome && ['/login/', '/register/'].includes(url.pathname);
       const returnsHome = (fromAuth && link.classList.contains('auth-home-brand') || fromTickets) && url.pathname === '/';
       const opensPortal = ['/tickets/', '/dashboard/'].includes(url.pathname);
-      if (url.origin !== location.origin || (!opensAuth && !returnsHome && !opensPortal && !signsOut)) return;
+      const adminNavigation = Boolean(link.closest('[data-admin-navigation]'));
+      if (url.origin !== location.origin || (!opensAuth && !returnsHome && !opensPortal && !signsOut && !adminNavigation)) return;
       event.preventDefault();
       if (navigating) return;
       navigating = true;
-      adminTransition = url.pathname === '/dashboard/';
+      adminTransition = adminNavigation || url.pathname === '/dashboard/';
       try { sessionStorage.setItem(key, JSON.stringify({path: signsOut ? '/' : url.pathname, at: Date.now(), portal: opensPortal, admin: adminTransition})); } catch (_) {}
       show(true, opensPortal);
       setTimeout(() => location.assign(url.href), reduced ? 0 : 320);

@@ -1,0 +1,20 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/program-editor.css' %}">
+{{ program_editor_items|json_script:'program-editor-data' }}
+<div class="modal fade" id="programItemModal" tabindex="-1" aria-labelledby="programItemTitle" aria-hidden="true">
+<div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content admin-form-modal">
+<div class="modal-header"><div><span class="overline">CEREMONY PROGRAM</span><h2 class="modal-title fs-4" id="programItemTitle">Add program flow items</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+<div class="modal-body program-editor-layout">
+<form id="program-entry-form">{% csrf_token %}
+<p>{{ program_item_form.item_type.label_tag }}{{ program_item_form.item_type }}</p>
+<p>{{ program_item_form.title.label_tag }}{{ program_item_form.title }}</p>
+<p>{{ program_item_form.description.label_tag }}{{ program_item_form.description }}</p>
+<p>{{ program_item_form.speaker.label_tag }}{{ program_item_form.speaker }}<small class="text-muted d-block">Optional. NA or N/A leaves the speaker blank.</small></p>
+<div class="d-flex gap-2"><button type="submit" class="btn btn-brand" id="program-add">Add item</button><button type="button" class="btn btn-outline-brand" id="program-clear">Clear inputs</button></div>
+</form>
+<section class="program-editor-preview" aria-labelledby="program-list-title"><h3 id="program-list-title">Program order</h3><p class="small text-muted">Drag items to reorder, or use the arrow buttons. Select Edit to change an item.</p><ol id="program-draft-list" class="program-draft-list"></ol><p id="program-empty" class="text-muted">Add an item to start building the program.</p><p class="small text-muted">Changes are applied when you save the program flow.</p><hr class="program-hymn-divider"><div class="program-hymn-selection"><label for="id_hymn_language">Hymn language</label><select name="hymn_language" id="id_hymn_language" form="program-entry-form">{% for value, label in program_item_form.fields.hymn_language.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select><small class="text-muted d-block mt-2">For the item you are adding or editing, choose English or Tagalog to include hymn lyrics.</small></div></section>
+</div>
+<div class="px-4"><p id="program-editor-error" class="text-danger" role="alert" hidden></p><p id="program-editor-status" class="visually-hidden" aria-live="polite"></p></div>
+<div class="modal-footer"><button type="button" class="btn btn-outline-brand" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-brand" id="program-save">Save program flow</button></div>
+</div></div></div>
+<script src="{% static 'js/program-editor.js' %}"></script>

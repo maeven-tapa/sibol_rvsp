@@ -16,7 +16,7 @@
       {% for field in form %}
       <div class="login-field">
         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
+        {% if admin_login and field.name == 'password' %}<div class="password-control">{{ field }}<button type="button" id="toggle-admin-password" aria-controls="{{ field.id_for_label }}" aria-pressed="false">Show</button></div>{% else %}{{ field }}{% endif %}
         {% for error in field.errors %}<div class="text-danger small" role="alert">{{ error }}</div>{% endfor %}
       </div>
       {% endfor %}
@@ -26,3 +26,5 @@
   </div>
 </div>
 {% endblock %}
+
+{% block scripts %}{% if admin_login %}<script>document.getElementById('toggle-admin-password').addEventListener('click',function(){const input=document.getElementById(this.getAttribute('aria-controls'));const show=input.type==='password';input.type=show?'text':'password';this.textContent=show?'Hide':'Show';this.setAttribute('aria-pressed',String(show));});</script>{% endif %}{% endblock %}

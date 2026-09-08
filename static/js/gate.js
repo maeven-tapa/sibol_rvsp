@@ -1,5 +1,14 @@
 (() => {
   const station = document.querySelector('.entry-station');
+  // Keep the original entry-log tab aware of this scanner, including after reloads.
+  function notifyEntryTab() {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({type: 'sibol-scanner-open'}, window.location.origin);
+    }
+  }
+  notifyEntryTab();
+  const entryHeartbeat = setInterval(notifyEntryTab, 1000);
+  window.addEventListener('pagehide', () => clearInterval(entryHeartbeat));
   const fullscreenButton = document.querySelector('#toggle-fullscreen');
   const fullscreenStatus = document.querySelector('#fullscreen-status');
   function syncFullscreen() {
@@ -16,33 +25,61 @@
     } catch (error) { fullscreenStatus.textContent = error.message || 'Fullscreen could not be started.'; }
   });
   document.addEventListener('fullscreenchange', syncFullscreen);
-  const form = document.querySelector('#scan-form'), result = document.querySelector('#scan-result');
+  const form = document.querySelector('#scan-form'), result = document.querySelector('#camera-placeholder');
   const video = document.querySelector('#gate-camera'), cameraStatus = document.querySelector('#camera-status');
   const start = document.querySelector('#start-camera'), stop = document.querySelector('#stop-camera');
   let stream = null, busy = false, frame = null, cameraGeneration = 0;
   let lastCode = '', lastTime = 0;
   const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', {willReadFrequently:true});
-  function message(type, title, detail) {
-    result.className = `station-result ${type}`;
-    const heading = document.createElement('b'), text = document.createElement('span');
-    heading.textContent = title; text.textContent = detail;
-    result.replaceChildren(heading, text);
+  const defaultPlaceholder = [...result.childNodes].map(node => node.cloneNode(true));
+  let resultTimer = null, showingResult = false;
+  function clearResult() {
+    clearTimeout(resultTimer);
+    showingResult = false;
+    result.className = 'camera-placeholder';
+    result.replaceChildren(...defaultPlaceholder.map(node => node.cloneNode(true)));
+    result.hidden = Boolean(stream);
+    document.querySelector('#camera-stage').classList.remove('has-result');
   }
-  async function submit(code) {
+  function message(type, title, detail, data = {}) {
+    clearTimeout(resultTimer);
+    showingResult = true;
+    result.hidden = false;
+    result.className = `camera-placeholder scan-feedback ${type}`;
+    document.querySelector('#camera-stage').classList.add('has-result');
+    const icon = document.createElement('span'); icon.className = 'scan-feedback-icon';
+    icon.textContent = {success:'✓', error:'✕', warning:'!', busy:'…'}[type];
+    icon.setAttribute('aria-hidden', 'true');
+    const heading = document.createElement('b'); heading.textContent = title;
+    result.replaceChildren(icon, heading);
+    if (data.name) { const name = document.createElement('div'); name.className = 'scan-person'; name.textContent = data.name; result.append(name); }
+    if (data.type) { const kind = document.createElement('small'); kind.textContent = `${data.type} ticket`; result.append(kind); }
+    const text = document.createElement('small'); text.textContent = detail; result.append(text);
+    if (type !== 'busy') resultTimer = setTimeout(clearResult, 700);
+  }
+  async function submit(code, camera = false) {
     code = code.trim().toUpperCase();
-    if (busy || !code || (code === lastCode && Date.now() - lastTime < 5000)) return;
+    if (busy || !code || (camera && code === lastCode && Date.now() - lastTime < 2000)) return;
     busy = true; lastCode = code; lastTime = Date.now();
     form.querySelector('button').disabled = true;
     document.querySelector('#camera-stage').classList.add('busy');
     document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));
     message('busy', 'Checking pass…', 'Please wait for the station response.');
     try {
-      const response = await fetch(form.action, {method:'POST', headers:{'X-CSRFToken':form.elements.csrfmiddlewaretoken.value}, body:new URLSearchParams({code, admin_gate: form.elements.admin_gate.value})});
+      const response = await fetch(form.action, {method:'POST', headers:{'X-CSRFToken':form.elements.csrfmiddlewaretoken.value}, body:new URLSearchParams({code})});
       if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Session expired. Sign in again and reopen the station.');
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Could not validate this pass.');
-      message('success', `${data.name} · ${data.type}`, data.message);
-      document.querySelector(`#route-${data.relay}`)?.classList.add('selected');
+      if (!response.ok) {
+        const duplicate = response.status === 409;
+        const title = duplicate ? (data.admission_pending ? 'Admission needs inspection' : 'Already entered') : 'Invalid ticket';
+        const detail = duplicate && data.entry_time
+          ? `${data.admission_pending ? 'Attempt recorded' : 'Entered'}: ${data.entry_time}${data.admission_pending ? '. Ask the administrator to inspect the gate.' : ''}`
+          : data.error || 'Could not validate this pass.';
+        message(duplicate ? 'warning' : 'error', title, detail, data);
+        return;
+      }
+      message('success', data.admitted ? 'Access granted' : 'Valid reservation', data.message, data);
+      (data.gates || [data.gate]).forEach(gate => document.querySelector(`#route-${gate}`)?.classList.add('selected'));
       form.elements.code.value = '';
     } catch(e) { message('error', 'Entry not confirmed', e.message + ' No automatic retry was sent.'); }
     finally { busy=false; lastTime=Date.now(); form.querySelector('button').disabled=false; document.querySelector('#camera-stage').classList.remove('busy'); form.elements.code.focus({preventScroll:true}); form.elements.code.select(); }
@@ -59,12 +96,13 @@
   }
   function detect() {
     if (!stream) return;
-    if (!busy && video.readyState >= 2) {
+    if (!busy && !showingResult && video.readyState >= 2) {
       canvas.width=video.videoWidth; canvas.height=video.videoHeight;
       ctx.drawImage(video,0,0);
       const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
       const qr=window.jsQR(pixels.data,pixels.width,pixels.height,{inversionAttempts:'dontInvert'});
-      if (qr) submit(qr.data);
+      if (qr) submit(qr.data, true);
+      else { lastCode = ''; lastTime = 0; }
     }
     frame=setTimeout(detect,180);
   }
@@ -77,7 +115,7 @@
       const opened=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false});
       if (generation!==cameraGeneration) { opened.getTracks().forEach(t=>t.stop()); return; }
       stream=opened; video.srcObject=stream; await video.play();
-      document.querySelector('#camera-placeholder').hidden=true; stop.disabled=false;
+      clearResult(); stop.disabled=false;
       cameraStatus.textContent='Camera scanning · hold one QR pass inside the frame'; detect();
     } catch(e) { stopCamera(); cameraStatus.textContent=`Camera unavailable: ${e.message}`; }
   });

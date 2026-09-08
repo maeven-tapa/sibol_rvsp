@@ -11,4 +11,10 @@ body:has(.admin-page){background:#25272d}.admin-page{color:#302b31}.admin-page .
 .reservation-button{position:relative}.reservation-button span{display:inline-grid;place-items:center;min-width:18px;height:18px;margin-left:5px;border-radius:50%;background:#a7112b;color:#fff;font-size:10px}
 .admin-card-header .reservation-button,.admin-card-header form .btn{height:31px;white-space:nowrap}
 .icon-actions{display:flex;gap:5px;align-items:center}.icon-actions form{display:inline}.icon-actions button{border:1px solid #d9cfd2;background:#fff;color:#8b4854;border-radius:4px;width:28px;height:28px;padding:0;font-size:14px}
-.admin-form-modal .modal-header{cursor:move}.admin-form-modal .btn-close{cursor:pointer}
+.admin-form-modal .modal-header{cursor:default}.admin-form-modal .btn-close{cursor:pointer}
+
+.admin-page .table th,.admin-page .table td,#reservationModal .table th,#reservationModal .table td{text-align:center;vertical-align:middle}
+.admin-page .table td.icon-actions{display:table-cell;white-space:nowrap}.admin-page .table td.icon-actions form{display:inline-block}.admin-page .table td.icon-actions button{vertical-align:middle;margin:2px}
+#reservationModal .table td .d-flex{justify-content:center}
+
+.gate-entry-summary{color:#df354c;font-weight:600;margin-top:8px}

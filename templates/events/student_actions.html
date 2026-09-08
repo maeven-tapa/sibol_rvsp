@@ -1,0 +1,29 @@
+{% load static %}
+<div class="modal fade" id="studentEditModal" tabindex="-1" aria-labelledby="studentEditTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content admin-form-modal">
+    <div class="modal-header"><h2 class="modal-title fs-4" id="studentEditTitle">Edit student</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="student_edit"><input type="hidden" name="student_id" value="{{ editing_student.pk }}">
+      <div class="modal-body">{{ student_edit_form.as_p }}</div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-brand" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-brand">Save changes</button></div>
+    </form>
+  </div></div>
+</div>
+<div class="modal fade" id="studentStatusModal" tabindex="-1" aria-labelledby="studentStatusTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content admin-form-modal">
+    <div class="modal-header"><h2 class="modal-title fs-4" id="studentStatusTitle">Change student status</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action"><input type="hidden" name="student_id">
+      <div class="modal-body"><p data-student-prompt></p><p class="text-muted mb-0" data-status-description></p></div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-brand" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-brand" data-status-submit>Confirm</button></div>
+    </form>
+  </div></div>
+</div>
+<div class="modal fade" id="studentDeleteModal" tabindex="-1" aria-labelledby="studentDeleteTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content admin-form-modal">
+    <div class="modal-header"><h2 class="modal-title fs-4" id="studentDeleteTitle">Delete student</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="student_delete"><input type="hidden" name="student_id">
+      <div class="modal-body"><p data-student-prompt></p><p class="text-muted mb-0">This removes the student from the roster and disables their account, if one exists. Existing tickets and ceremony history are retained. This cannot be undone.</p></div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-brand" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger">Delete student</button></div>
+    </form>
+  </div></div>
+</div>
+<script src="{% static 'js/student-actions.js' %}"></script>

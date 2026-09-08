@@ -12,7 +12,9 @@ urlpatterns = [
     path('tickets/reserve/', views.reserve_guests, name='reserve_guests'), path('tickets/transfer/', views.transfer_ticket, name='transfer_ticket'), path('tickets/transfer/<int:transfer_id>/accept/', views.accept_transfer, name='accept_transfer'),
     path("purchase/", views.purchase, name="purchase"),
     path("dashboard/", views.dashboard, name="dashboard"), path("gate/", gate_views.setup, name="gate"),
+    path("history/", views.dashboard, {"is_history": True}, name="history"),
     path('program-flow/', views.program_flow, name='program_flow'),
+    path('gate/entries/', gate_views.entries, name='gate_entries'),
     path('gate/scanner/', gate_views.scanner, name='gate_scanner'),
     path('gate/scan/', gate_views.scan, name='gate_scan'),
 ]

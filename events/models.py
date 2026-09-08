@@ -5,6 +5,8 @@ from django.core.validators import MinValueValidator
 
 
 class Student(models.Model):
+    archived_ceremony = models.ForeignKey('Ceremony', null=True, blank=True, on_delete=models.PROTECT, related_name='archived_students')
+    is_active = models.BooleanField(default=True)
     tupc_id = models.CharField(max_length=12, unique=True, verbose_name="TUP ID")
     name = models.CharField(max_length=300)
     course = models.CharField(max_length=120)
@@ -30,6 +32,7 @@ class Ceremony(models.Model):
     venue = models.CharField(max_length=250)
     is_active = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
+    program_saved_at = models.DateTimeField(null=True, blank=True)
     roster_snapshot = models.JSONField(null=True, blank=True)
 
     class Meta:
@@ -79,6 +82,11 @@ class ProgramItem(models.Model):
     def __str__(self):
         return self.title
 
+    @property
+    def display_speaker(self):
+        value = self.speaker.strip()
+        return '' if value.lower() in ('na', 'n/a') else value
+
 
 class StudentProfile(models.Model):
     access_code_digest = models.CharField(max_length=64, unique=True, null=True, blank=True)
@@ -89,6 +97,7 @@ class StudentProfile(models.Model):
 
 
 class Faculty(models.Model):
+    archived_ceremony = models.ForeignKey(Ceremony, null=True, blank=True, on_delete=models.PROTECT, related_name='archived_faculty')
     employee_id = models.CharField(max_length=60, unique=True, null=True, verbose_name="Employee Faculty ID")
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="faculty_profile")
     name = models.CharField(max_length=300)

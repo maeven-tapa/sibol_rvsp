@@ -9,9 +9,11 @@ from django.db import transaction
 from django.http import JsonResponse, HttpResponseNotAllowed, Http404
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from .forms import SignUpForm, StudentForm, CeremonyForm, AccessCodeForm, AdminLoginForm, FacultyForm, ProgramItemForm
 from .models import Ticket, Student, Ceremony, Faculty, StudentProfile, ProgramItem, TicketTransfer
+import json
 import uuid
 from django.views.decorators.cache import never_cache
 from django.core.cache import cache
@@ -21,14 +23,14 @@ from .access_codes import issue_access_code, code_digest
 
 def ensure_student_ticket(user, ceremony):
     """Give every eligible account its included student pass for this ceremony."""
-    if ceremony and not user.is_staff:
+    if ceremony and user.is_active and not user.is_staff and not Faculty.objects.filter(user=user).exists() and not StudentProfile.objects.filter(user=user, student__archived_ceremony__isnull=False).exists():
         Ticket.objects.get_or_create(owner=user, ceremony=ceremony, ticket_type=Ticket.TicketType.STUDENT)
 
 def home(request):
     if request.user.is_authenticated and request.user.is_staff:
         return redirect("dashboard")
     ceremony = Ceremony.objects.filter(is_active=True).first()
-    graduates = Student.objects.count() + Faculty.objects.count()
+    graduates = Student.objects.filter(archived_ceremony__isnull=True).count() + Faculty.objects.filter(archived_ceremony__isnull=True).count()
     guests = ceremony.tickets.filter(ticket_type=Ticket.TicketType.GUEST).count() if ceremony else 0
     return render(request, "events/home.html", {'ceremony': ceremony, 'graduates': graduates, 'guests': guests, 'expected': graduates + guests})
 
@@ -216,14 +218,26 @@ def dashboard_table(request, rows, key, label, fields):
     }
 
 
+@transaction.atomic
 def complete_ceremony(ceremony):
+    if ceremony.completed_at:
+        return
     # Preserve roster details and registration state as they were at completion.
-    students = Student.objects.select_related('profile').order_by('tupc_id')
+    students = Student.objects.filter(archived_ceremony__isnull=True).select_related('profile').order_by('tupc_id')
     faculty = Faculty.objects.select_related('user').filter(user__tickets__ceremony=ceremony, user__tickets__ticket_type=Ticket.TicketType.FACULTY).distinct().order_by('name')
     ceremony.roster_snapshot = {
-        'students': [dict(tupc_id=row.tupc_id, name=row.name, course=row.course, section=row.section, profile=hasattr(row, 'profile')) for row in students],
+        'students': [dict(tupc_id=row.tupc_id, name=row.name, course=row.course, section=row.section, is_active=row.is_active, profile=hasattr(row, 'profile')) for row in students],
         'faculty': [dict(employee_id=row.employee_id, name=row.name, department=row.department, campus=row.campus, user=dict(username=row.user.username, email=row.user.email)) for row in faculty],
     }
+    # Keep account and ticket records intact, but retire access and live roster membership.
+    student_ids = list(students.values_list('pk', flat=True))
+    faculty_ids = list(faculty.values_list('pk', flat=True))
+    attendee_ids = set(ceremony.tickets.exclude(owner__is_staff=True).values_list('owner_id', flat=True))
+    attendee_ids.update(StudentProfile.objects.filter(student_id__in=student_ids).values_list('user_id', flat=True))
+    attendee_ids.update(Faculty.objects.filter(pk__in=faculty_ids).values_list('user_id', flat=True))
+    Student.objects.filter(pk__in=student_ids).update(archived_ceremony=ceremony)
+    Faculty.objects.filter(pk__in=faculty_ids).update(archived_ceremony=ceremony)
+    User.objects.filter(pk__in=attendee_ids, is_staff=False).update(is_active=False)
     ceremony.is_active = False
     ceremony.completed_at = timezone.now()
     ceremony.save(update_fields=['roster_snapshot', 'is_active', 'completed_at'])
@@ -231,11 +245,16 @@ def complete_ceremony(ceremony):
 
 @never_cache
 @user_passes_test(lambda user: user.is_staff)
-def dashboard(request):
+def dashboard(request, is_history=False):
     history_id = request.GET.get('ceremony', '')
-    is_history = bool(history_id)
+    if history_id and not is_history:
+        if request.method != 'GET':
+            return HttpResponseNotAllowed(['GET'])
+        return redirect(f"{reverse('history')}?{request.GET.urlencode()}")
     selected_ceremony = None
-    if is_history:
+    if is_history and request.method != 'GET':
+        return HttpResponseNotAllowed(['GET'])
+    if is_history and history_id:
         if not history_id.isdecimal():
             raise Http404('Ceremony not found.')
         selected_ceremony = get_object_or_404(Ceremony, pk=history_id, is_active=False)
@@ -243,13 +262,46 @@ def dashboard(request):
             return HttpResponseNotAllowed(['GET'])
     student_form, ceremony_form, faculty_form, program_item_form = StudentForm(), CeremonyForm(), FacultyForm(), ProgramItemForm()
     open_modal = ''
+    student_edit_form = StudentForm(prefix='edit')
+    editing_student = None
     if request.method == 'POST':
         if request.POST.get('action') in ('approve_reservation', 'decline_reservation'):
-            ticket = get_object_or_404(Ticket, pk=request.POST.get('ticket_id'), ticket_type=Ticket.TicketType.GUEST, reservation_status='pending')
+            ticket = get_object_or_404(Ticket, pk=request.POST.get('ticket_id'), ticket_type=Ticket.TicketType.GUEST, reservation_status='pending', ceremony__is_active=True)
             ticket.reservation_status = 'approved' if request.POST.get('action') == 'approve_reservation' else 'declined'
             ticket.save(update_fields=['reservation_status'])
             messages.success(request, f'Reservation {ticket.reservation_status}.')
             return redirect('dashboard')
+        if request.POST.get('action') == 'program_flow_save':
+            ceremony = get_object_or_404(Ceremony, is_active=True)
+            try:
+                entries = json.loads(request.POST.get('items', ''))
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Invalid program list.'}, status=400)
+            if not isinstance(entries, list) or len(entries) > 500:
+                return JsonResponse({'error': 'Enter a program list of up to 500 items.'}, status=400)
+            with transaction.atomic():
+                existing = {item.pk: item for item in ceremony.program_items.select_for_update()}
+                forms, seen = [], set()
+                for index, entry in enumerate(entries):
+                    if not isinstance(entry, dict):
+                        return JsonResponse({'error': 'Invalid program item.'}, status=400)
+                    item_id = entry.get('id')
+                    if item_id is not None and (type(item_id) is not int or item_id not in existing or item_id in seen):
+                        return JsonResponse({'error': 'An item is invalid or belongs to another ceremony. Reload the page.'}, status=400)
+                    seen.add(item_id) if item_id is not None else None
+                    form = ProgramItemForm(entry, instance=existing.get(item_id))
+                    if not form.is_valid():
+                        return JsonResponse({'error': f'Item {index + 1}: ' + '; '.join(f'{field}: {", ".join(errors)}' for field, errors in form.errors.items())}, status=400)
+                    forms.append(form)
+                for position, form in enumerate(forms):
+                    item = form.save(commit=False)
+                    item.ceremony = ceremony
+                    item.position = position
+                    item.save()
+                ceremony.program_items.filter(pk__in=set(existing) - seen).delete()
+                ceremony.program_saved_at = timezone.now()
+                ceremony.save(update_fields=['program_saved_at'])
+            return JsonResponse({'ok': True})
         if request.POST.get('action') in ('program_item_create', 'program_item_update'):
             ceremony = Ceremony.objects.filter(is_active=True).first()
             if not ceremony:
@@ -265,11 +317,52 @@ def dashboard(request):
                 if instance is None:
                     item.position = ceremony.program_items.count()
                 item.save()
+                ceremony.program_saved_at = timezone.now()
+                ceremony.save(update_fields=['program_saved_at'])
                 messages.success(request, 'Program flow item saved.')
                 return redirect('dashboard')
             open_modal = 'programItemModal'
+        if request.POST.get('action') in ('student_edit', 'student_disable', 'student_enable', 'student_delete'):
+            if not Ceremony.objects.filter(is_active=True).exists():
+                messages.error(request, 'Start a ceremony before managing students.')
+                return redirect('dashboard')
+            with transaction.atomic():
+                student = get_object_or_404(Student.objects.select_for_update(), pk=request.POST.get('student_id'), archived_ceremony__isnull=True)
+                profile = getattr(student, 'profile', None)
+                action = request.POST['action']
+                if action == 'student_edit':
+                    student_edit_form = StudentForm(request.POST, instance=student, prefix='edit')
+                    if student_edit_form.is_valid():
+                        student_edit_form.save()
+                        if profile:
+                            profile.user.username = student.tupc_id
+                            profile.user.first_name, _, profile.user.last_name = student.name.partition(' ')
+                            profile.user.first_name = profile.user.first_name[:150]
+                            profile.user.last_name = profile.user.last_name[:150]
+                            profile.user.save(update_fields=['username', 'first_name', 'last_name'])
+                        messages.success(request, 'Student details updated.')
+                        return redirect('dashboard')
+                    editing_student = student
+                    open_modal = 'studentEditModal'
+                elif action in ('student_disable', 'student_enable'):
+                    student.is_active = action == 'student_enable'
+                    student.save(update_fields=['is_active'])
+                    if profile:
+                        profile.user.is_active = student.is_active
+                        profile.user.save(update_fields=['is_active'])
+                    messages.success(request, 'Student enabled.' if student.is_active else 'Student disabled.')
+                    return redirect('dashboard')
+                else:
+                    if profile:
+                        profile.user.is_active = False
+                        profile.user.save(update_fields=['is_active'])
+                        profile.student = None
+                        profile.save(update_fields=['student'])
+                    student.delete()
+                    messages.success(request, 'Student removed from the roster. Existing ticket records have been retained.')
+                    return redirect('dashboard')
         if request.POST.get('action') == 'student_access_code':
-            profile = get_object_or_404(StudentProfile, student_id=request.POST.get('student_id'), user__is_staff=False)
+            profile = get_object_or_404(StudentProfile, student_id=request.POST.get('student_id'), student__archived_ceremony__isnull=True, user__is_staff=False)
             request.session['issued_student_code'] = {'name': profile.student.name, 'code': issue_access_code(profile)}
             return redirect('dashboard')
         if request.POST.get('action') == 'student':
@@ -325,9 +418,9 @@ def dashboard(request):
                 completed = Ceremony.objects.select_for_update().filter(is_active=True).first()
                 if completed:
                     complete_ceremony(completed)
-            messages.success(request, 'Ceremony marked complete. Home information cards, reservations, and student roster are now hidden.')
+            messages.success(request, 'Ceremony completed. Students, faculty accounts, and tickets are archived in History. The next ceremony will start with an empty roster.')
             if completed:
-                return redirect(f"{request.path}?ceremony={completed.pk}")
+                return redirect(f"{reverse('history')}?ceremony={completed.pk}")
             return redirect('dashboard')
     ceremony = selected_ceremony if is_history else Ceremony.objects.filter(is_active=True).first()
     ticket_list = Ticket.objects.select_related("owner").filter(ceremony=ceremony).order_by("-purchased_at") if ceremony else Ticket.objects.none()
@@ -336,34 +429,36 @@ def dashboard(request):
     used = counted_tickets.filter(checked_in_at__isnull=False).count()
     guests = ticket_list.filter(ticket_type=Ticket.TicketType.GUEST).count()
     revenue = sum(ticket.price for ticket in counted_tickets)
-    students = Student.objects.select_related('profile').order_by('tupc_id')
+    students = Student.objects.filter(archived_ceremony__isnull=True).select_related('profile').order_by('tupc_id')
     faculty_accounts = Faculty.objects.select_related('user').filter(user__tickets__ceremony=ceremony, user__tickets__ticket_type=Ticket.TicketType.FACULTY).distinct().order_by('name') if ceremony else Faculty.objects.none()
-    if is_history:
+    if is_history and ceremony:
         if ceremony.roster_snapshot is not None:
             students = ceremony.roster_snapshot['students']
             faculty_accounts = ceremony.roster_snapshot['faculty']
         else:
             # Older ceremonies have ticket records but no saved eligibility snapshot.
-            students = students.filter(profile__user__tickets__ceremony=ceremony, profile__user__tickets__ticket_type=Ticket.TicketType.STUDENT).distinct()
+            students = Student.objects.select_related('profile').filter(profile__user__tickets__ceremony=ceremony, profile__user__tickets__ticket_type=Ticket.TicketType.STUDENT).distinct().order_by('tupc_id')
     ticket_table = dashboard_table(request, ticket_list, 'tickets', 'Ticket audit', ['code', 'owner__username', 'owner__first_name', 'owner__last_name', 'owner__email', 'ticket_type'])
     student_table = dashboard_table(request, students, 'students', 'Eligible students', ['tupc_id', 'name', 'course', 'section'])
     faculty_table = dashboard_table(request, faculty_accounts, 'faculty', 'Faculty attendees', ['employee_id', 'name', 'department', 'campus', 'user__email'])
-    return render(request, "events/dashboard.html", {
+    return render(request, "events/history.html" if is_history else "events/dashboard.html", {
         'issued_student_code': request.session.pop('issued_student_code', None),
         'admin_ticket': ticket_list.filter(owner=request.user, ticket_type=Ticket.TicketType.ADMIN).first(),
         'tickets': ticket_table['page'], 'ticket_table': ticket_table, 'student_table': student_table, 'faculty_table': faculty_table, 'total': total, 'used': used, 'guests': guests, 'revenue': revenue,
         'student_form': student_form, 'faculty_form': faculty_form, 'ceremony_form': ceremony_form, 'program_item_form': program_item_form,
         'program_items': ceremony.program_items.all() if ceremony else ProgramItem.objects.none(),
+        'program_editor_items': list(ceremony.program_items.values('id', 'item_type', 'title', 'description', 'speaker', 'hymn_language')) if ceremony else [],
         'pending_reservations': Ticket.objects.select_related('owner').filter(ceremony=ceremony, ticket_type=Ticket.TicketType.GUEST, reservation_status='pending') if ceremony and not is_history else Ticket.objects.none(),
         'students': student_table['page'], 'faculty_accounts': faculty_table['page'], 'ceremony': ceremony,
         'ceremonies': Ceremony.objects.filter(is_active=False).order_by('-starts_at'),
         'is_history': is_history, 'open_modal': open_modal,
+        'student_edit_form': student_edit_form, 'editing_student': editing_student,
     })
 
 
 @require_POST
 def check_student(request):
-    student = Student.objects.filter(tupc_id=request.POST.get('tupc_id', '').strip().upper()).first()
+    student = Student.objects.filter(tupc_id=request.POST.get('tupc_id', '').strip().upper(), is_active=True, archived_ceremony__isnull=True).first()
     if not student or User.objects.filter(username__iexact=student.tupc_id).exists():
         return JsonResponse({'error': 'ID unavailable for registration. Check with the administrator or sign in if you already have an account.'}, status=400)
     first_name, _, last_name = student.name.partition(' ')

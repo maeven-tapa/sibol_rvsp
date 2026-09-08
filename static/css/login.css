@@ -12,3 +12,5 @@
 .login-signup{text-align:center;font-size:12px;color:#756b70;margin:20px 0 0}
 .login-signup a{color:var(--red);font-weight:600;text-underline-offset:3px}
 @media(max-width:420px){.login-box{padding:28px 24px}.login-box h1{font-size:32px}}
+
+.password-control{position:relative}.password-control input{padding-right:75px!important}.password-control button{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#a7112b;font-weight:700;padding:6px}
