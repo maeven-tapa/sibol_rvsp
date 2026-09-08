@@ -38,11 +38,21 @@ def home(request):
 def program_flow(request):
     ceremony = Ceremony.objects.filter(is_active=True).first()
     items = ceremony.program_items.all() if ceremony else ProgramItem.objects.none()
-    lyrics = {'english': '', 'tagalog': ''}
-    for language in lyrics:
-        with open(f'{settings.BASE_DIR}/static/txt/tup_hymn_{"eng" if language == "english" else "tagalog"}.txt', encoding='utf-8') as source:
-            lyrics[language] = source.read()
-    return render(request, 'events/program_flow.html', {'ceremony': ceremony, 'items': items, 'lyrics': lyrics})
+    hymns = []
+    selected_languages = dict.fromkeys(item.hymn_language for item in items if item.hymn_language)
+    for language in selected_languages:
+        if language not in ProgramItem.HymnLanguage.values:
+            continue
+        filename = 'eng' if language == ProgramItem.HymnLanguage.ENGLISH else 'tagalog'
+        with open(settings.BASE_DIR / f'static/txt/tup_hymn_{filename}.txt', encoding='utf-8') as source:
+            hymns.append({
+                'language': language,
+                'lang': 'en' if language == ProgramItem.HymnLanguage.ENGLISH else 'tl',
+                'label': ProgramItem.HymnLanguage(language).label,
+                'lyrics': source.read(),
+            })
+    return render(request, 'events/program_flow.html', {'ceremony': ceremony, 'items': items, 'hymns': hymns})
+
 
 @never_cache
 def register(request):
@@ -140,13 +150,22 @@ def reserve_guests(request):
     return redirect('tickets')
 
 
+def verified_transfer_students():
+    return User.objects.filter(
+        is_active=True, is_staff=False,
+        student_profile__student__is_active=True,
+        student_profile__student__archived_ceremony__isnull=True,
+        student_profile__access_code_digest__isnull=False,
+    ).exclude(student_profile__access_code_digest='').order_by('first_name', 'last_name', 'username')
+
+
 @login_required
 @require_POST
 def transfer_ticket(request):
-    ticket = get_object_or_404(Ticket, pk=request.POST.get('ticket_id'), owner=request.user, ticket_type=Ticket.TicketType.GUEST, reservation_status='approved', checked_in_at__isnull=True)
-    recipient = User.objects.filter(username__iexact=request.POST.get('recipient_id', '').strip()).exclude(pk=request.user.pk).first()
-    if not recipient or recipient.is_staff:
-        messages.error(request, 'Enter the receiving student’s TUP ID.')
+    ticket = get_object_or_404(Ticket, pk=request.POST.get('ticket_id'), owner=request.user, ticket_type=Ticket.TicketType.GUEST, reservation_status='approved', checked_in_at__isnull=True, ceremony__is_active=True)
+    recipient = verified_transfer_students().filter(username__iexact=request.POST.get('recipient_id', '').strip()).exclude(pk=request.user.pk).first()
+    if not recipient:
+        messages.error(request, 'Choose an active, verified student to receive this ticket.')
     elif TicketTransfer.objects.filter(ticket=ticket).exists():
         messages.error(request, 'This ticket already has a transfer request.')
     else:
@@ -160,6 +179,13 @@ def transfer_ticket(request):
 def accept_transfer(request, transfer_id):
     transfer = get_object_or_404(TicketTransfer, pk=transfer_id, recipient=request.user, accepted_at__isnull=True)
     with transaction.atomic():
+        ticket = Ticket.objects.select_for_update().get(pk=transfer.ticket_id)
+        if (not verified_transfer_students().filter(pk=request.user.pk).exists()
+                or ticket.owner_id != transfer.sender_id or ticket.is_used
+                or ticket.reservation_status != 'approved' or not ticket.ceremony or not ticket.ceremony.is_active):
+            messages.error(request, 'This transfer is no longer available.')
+            return redirect('tickets')
+        transfer.ticket = ticket
         transfer.ticket.owner = request.user
         transfer.ticket.save(update_fields=['owner'])
         transfer.accepted_at = timezone.now()
@@ -183,7 +209,9 @@ def tickets(request):
     pending_guest_requests = request.user.guest_reservations.filter(ceremony=ceremony, status=GuestReservation.Status.PENDING).order_by('created_at') if ceremony else GuestReservation.objects.none()
     incoming_transfers = TicketTransfer.objects.select_related('ticket', 'sender').filter(recipient=request.user, accepted_at__isnull=True)
     tickets = request.user.tickets.select_related('ceremony').exclude(reservation_status='declined').annotate(ticket_order=Case(When(ticket_type=Ticket.TicketType.STUDENT, then=0), default=1, output_field=IntegerField())).order_by('ticket_order', 'purchased_at')
-    return render(request, "events/tickets.html", {"tickets": tickets, 'ceremony': ceremony, 'guest_count': guest_count, 'guest_slots': max(0, 2 - guest_count - pending_guest_requests.count()), 'pending_guest_requests': pending_guest_requests, 'incoming_transfers': incoming_transfers})
+    transferable_tickets = tickets.filter(ticket_type=Ticket.TicketType.GUEST, reservation_status='approved', checked_in_at__isnull=True, ceremony__is_active=True, transfer__isnull=True)
+    transfer_recipients = verified_transfer_students().exclude(pk=request.user.pk)
+    return render(request, "events/tickets.html", {"tickets": tickets, 'ceremony': ceremony, 'guest_count': guest_count, 'guest_slots': max(0, 2 - guest_count - pending_guest_requests.count()), 'pending_guest_requests': pending_guest_requests, 'incoming_transfers': incoming_transfers, 'transferable_tickets': transferable_tickets, 'transferable_ids': list(transferable_tickets.values_list('pk', flat=True)), 'transfer_recipients': transfer_recipients})
 
 def dashboard_table(request, rows, key, label, fields):
     query = request.GET.get(f'{key}_q', '').strip()

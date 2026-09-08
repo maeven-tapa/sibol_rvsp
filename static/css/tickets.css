@@ -14,3 +14,18 @@
 @media print{body>*:not(.portal-page){display:none!important}.portal-page .portal-top-actions,.transfer-button,.ticket-download{display:none!important}.portal-page{background:#fff!important}.sibol-pass{break-inside:avoid;box-shadow:none!important}}
 
 .pass-gallery{margin-inline:auto;width:100%;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),320px))}
+
+/* Keep student and guest passes the same height, including their action rows. */
+.pass-gallery{align-items:stretch;grid-auto-rows:1fr}
+.sibol-pass{display:flex;flex-direction:column;height:100%;min-width:0}
+.sibol-pass>div,.sibol-pass>footer{flex-shrink:0}
+.pass-itinerary{min-height:142px}.pass-venue{display:block;line-height:1.5}
+.pass-scan{flex:1!important;justify-content:center}
+.pass-stub{min-height:72px;align-items:center}
+.pass-actions{min-height:44px;display:flex;align-items:stretch;background:#fff5f6}
+.pass-action-note{display:flex;align-items:center;justify-content:center;width:100%;padding:10px;font-size:10px;color:#796269;text-align:center}
+.transfer-button:focus-visible{outline:2px solid #a7112b;outline-offset:-4px}
+.transfer-empty{padding:16px;border:1px solid #e9d6dc;background:#fff5f6;border-radius:10px;font-size:.85rem;color:#67414d}
+.tickets-page .portal-top-actions{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:600px){.portal-page>.container>.d-flex{gap:18px;flex-wrap:wrap}.tickets-page .portal-top-actions{flex-direction:row;justify-content:flex-start}}
+@media print{.pass-actions{display:none!important}}

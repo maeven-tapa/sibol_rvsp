@@ -48,12 +48,13 @@
       const fromHome = document.querySelector('.home-photo');
       const fromAuth = document.body.classList.contains('auth-page-theme');
       const fromTickets = document.body.classList.contains('tickets-page');
+      const programNavigation = (url.pathname === '/program-flow/' && location.pathname !== '/program-flow/') || (document.querySelector('.program-flow-page') && url.pathname === '/');
       const signsOut = url.pathname === '/logout/';
       const opensAuth = fromHome && ['/login/', '/register/'].includes(url.pathname);
       const returnsHome = (fromAuth && link.classList.contains('auth-home-brand') || fromTickets) && url.pathname === '/';
       const opensPortal = ['/tickets/', '/dashboard/'].includes(url.pathname);
       const adminNavigation = Boolean(link.closest('[data-admin-navigation]'));
-      if (url.origin !== location.origin || (!opensAuth && !returnsHome && !opensPortal && !signsOut && !adminNavigation)) return;
+      if (url.origin !== location.origin || (!programNavigation && !opensAuth && !returnsHome && !opensPortal && !signsOut && !adminNavigation)) return;
       event.preventDefault();
       if (navigating) return;
       navigating = true;

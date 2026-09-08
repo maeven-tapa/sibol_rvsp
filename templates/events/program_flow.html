@@ -1,8 +1,51 @@
-{% extends 'base.html' %}
+{% extends 'registration/auth_base.html' %}
 {% load static %}
 {% block title %}Program flow — Sibol{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/program-flow.css' %}?v=20260908">
-<main class="program-flow-page"><header class="program-flow-header"><div><h1>Solemn Order of Exercises</h1><p>The official ceremonial sequence, presentations, and timeline{% if ceremony %} for {{ ceremony.title }}{% endif %}.</p></div>{% if ceremony and ceremony.theme %}<span>▣ {{ ceremony.theme }}</span>{% endif %}</header><div class="program-flow-layout"><section class="program-timeline">{% for item in items %}<article class="program-item {% if forloop.first %}is-open{% endif %}"><i></i><div class="program-item-head"><span>{{ item.get_item_type_display|upper }}</span><h2>{{ item.title }}</h2></div>{% if item.display_speaker %}<p class="program-speaker">SPEAKER: <b>{{ item.display_speaker }}</b></p>{% endif %}{% if item.description %}<p class="program-description">{{ item.description }}</p>{% endif %}{% if item.hymn_language %}<a href="#hymn" class="lyrics-link">View {{ item.get_hymn_language_display }} hymn lyrics ↓</a>{% endif %}</article>{% empty %}<article class="program-empty"><h2>Program flow coming soon</h2><p>The ceremony sequence will be posted here once it is finalized.</p></article>{% endfor %}</section><aside class="hymn-panel" id="hymn"><div class="hymn-panel-head"><span>♫</span><b>UNIVERSITY TUP HYMN</b></div><div class="hymn-tabs"><button class="active" type="button" data-language="english">English</button><button type="button" data-language="tagalog">Tagalog</button></div><pre data-lyrics="english">{{ lyrics.english }}</pre><pre data-lyrics="tagalog" hidden>{{ lyrics.tagalog }}</pre><small>♬ Recited aloud during recessional pledge.</small></aside></div></main>
+<link rel="stylesheet" href="{% static 'css/home-photo.css' %}?v=20260909-glass-cards">
+<link rel="stylesheet" href="{% static 'css/program-flow.css' %}?v=20260909-program-details">
+<main class="home-photo program-flow-page">
+  <div class="home-gallery" aria-hidden="true"><span class="gallery-frame frame-current"></span><span class="gallery-frame frame-next"></span><span class="home-red-accent"></span></div>
+  <div class="program-shell">
+    <a class="program-back" href="{% url 'home' %}">← Back to home</a>
+    <header class="program-flow-header">
+      <span class="program-eyebrow">THE COMMENCEMENT CEREMONY</span>
+      <h1>Solemn Order<br><em>of Exercises.</em></h1>
+      {% if ceremony.theme %}<div class="program-theme"><strong>Theme:</strong> {{ ceremony.theme }}</div>{% endif %}
+      <p>The moments that mark your next chapter. Follow the official ceremony sequence{% if ceremony %} for {{ ceremony.title }}{% endif %}.</p>
+    </header>
+    <div class="program-flow-layout{% if not hymns %} program-flow-layout-no-hymn{% endif %}">
+      <section class="program-sequence" aria-labelledby="sequence-title">
+        <div class="program-section-heading"><h2 id="sequence-title">The ceremony</h2><span>{{ items|length }} SEGMENT{{ items|length|pluralize:"S" }}</span></div>
+      {% if ceremony %}<div class="program-meta"><span>{{ ceremony.starts_at|date:'F j, Y' }} · {{ ceremony.starts_at|date:'g:i A' }}</span><span>{{ ceremony.venue }}</span></div>{% endif %}
+        <ol class="program-timeline">
+          {% for item in items %}
+          <li class="program-item">
+            <span class="program-number" aria-hidden="true">{{ forloop.counter|stringformat:'02d' }}</span>
+            <article><div class="program-item-head"><span>{{ item.get_item_type_display }}</span><h3>{{ item.title }}</h3></div>
+              {% if item.display_speaker %}<p class="program-speaker"><span>Speaker</span> {{ item.display_speaker }}</p>{% endif %}
+              {% if item.description %}<p class="program-description">{{ item.description }}</p>{% endif %}
+              {% if item.hymn_language %}<a href="#hymn-{{ item.hymn_language }}" class="lyrics-link">View {{ item.get_hymn_language_display }} hymn lyrics ↗</a>{% endif %}
+            </article>
+          </li>
+          {% empty %}<li class="program-empty"><h3>Program flow coming soon</h3><p>The ceremony sequence will be posted here once it is finalized.</p></li>{% endfor %}
+        </ol>
+      </section>
+      {% if hymns %}<div class="hymn-sidebar">
+        {% for hymn in hymns %}
+        <aside class="hymn-panel" id="hymn-{{ hymn.language }}" aria-labelledby="hymn-title-{{ hymn.language }}">
+          <div class="hymn-panel-head"><span aria-hidden="true">♫</span><div><span class="program-eyebrow">ONE UNIVERSITY. ONE VOICE.</span><h2 id="hymn-title-{{ hymn.language }}">The TUP Hymn</h2></div></div>
+          <p class="hymn-language">{{ hymn.label }}</p>
+          <pre lang="{{ hymn.lang }}">{{ hymn.lyrics }}</pre>
+          <small>TECHNOLOGICAL UNIVERSITY OF THE PHILIPPINES</small>
+        </aside>
+        {% endfor %}
+      </div>{% endif %}
+    </div>
+    <footer class="program-footer">SIBOL <span>✦</span> YOUR NEXT CHAPTER</footer>
+  </div>
+</main>
 {% endblock %}
-{% block scripts %}<script>document.querySelectorAll('.hymn-tabs button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.hymn-tabs button').forEach(item=>item.classList.toggle('active',item===button));document.querySelectorAll('[data-lyrics]').forEach(item=>item.hidden=item.dataset.lyrics!==button.dataset.language)}));</script>{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/home-gallery.js' %}"></script>
+{% endblock %}
