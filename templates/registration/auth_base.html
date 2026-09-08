@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body_class %}auth-page-theme{% endblock %}
+{% block navigation %}
+<link rel="stylesheet" href="{% static 'css/auth-theme.css' %}?v=20260908-orange">
+<nav class="auth-header" aria-label="Sibol home">
+  <a class="auth-home-brand" href="{% url 'home' %}" aria-label="TUP Sibol — Home">
+    <img class="auth-logo" src="{% static 'images/tupsibol_logo.png' %}" alt="TUP Sibol">
+    <span class="auth-brand-text">TUP <strong>SIBOL</strong><small>GRADUATION PORTAL</small></span>
+  </a>
+</nav>
+{% endblock %}

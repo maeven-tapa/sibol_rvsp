@@ -1,0 +1,8 @@
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+  <small class="text-muted">{{ table.page.start_index }}–{{ table.page.end_index }} of {{ table.page.paginator.count }} records</small>
+  {% if table.page.has_other_pages %}<nav aria-label="{{ table.label }} pages"><ul class="pagination pagination-sm mb-0">
+    {% if table.previous %}<li class="page-item"><a class="page-link" href="{{ table.previous }}">Previous</a></li>{% endif %}
+    {% for number, url in table.links %}<li class="page-item {% if number == table.page.number %}active{% endif %}"><a class="page-link" href="{{ url }}" {% if number == table.page.number %}aria-current="page"{% endif %}>{{ number }}</a></li>{% endfor %}
+    {% if table.next %}<li class="page-item"><a class="page-link" href="{{ table.next }}">Next</a></li>{% endif %}
+  </ul></nav>{% endif %}
+</div>

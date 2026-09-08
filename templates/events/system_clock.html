@@ -1,0 +1,4 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/admin-theme.css' %}">
+<div class="admin-clock-strip"><span><i aria-hidden="true"></i> SYSTEM CLOCK</span><time id="system-clock" data-server-time="{% now 'c' %}">{% now 'M j, Y · h:i:s A' %}</time><small>PHILIPPINE TIME · UTC+8</small></div>
+<script src="{% static 'js/system-clock.js' %}" defer></script>

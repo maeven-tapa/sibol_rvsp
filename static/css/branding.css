@@ -1,0 +1,12 @@
+.site-logo{width:44px;height:44px;object-fit:contain;vertical-align:middle}.auth-home-brand .auth-logo{width:54px;height:54px;object-fit:contain}
+.site-brand{display:flex!important;align-items:center;gap:9px}.site-brand-copy{display:flex;flex-direction:column;line-height:1;font-size:1.1rem;letter-spacing:.08em}.site-brand-copy small{display:block;margin-top:5px;font-size:.48rem;letter-spacing:.16em;font-weight:500}
+.page-transition{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#a7112b;color:white;font:600 12px 'DM Sans',sans-serif;letter-spacing:2px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .28s ease,visibility 0s .28s}
+.page-is-transitioning .page-transition{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .28s ease,visibility 0s}
+.transition-logo{display:none;width:86px;height:86px;object-fit:contain}.page-transition-portal .page-transition{background:#fff;color:#a7112b}.page-transition-portal .transition-logo{display:block}.page-transition-portal .transition-spinner{border-color:#a7112b2b;border-top-color:#a7112b}
+.transition-spinner{width:36px;height:36px;border:2px solid #ffffff40;border-top-color:white;border-radius:50%;animation:page-spin .75s linear infinite}
+@keyframes page-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.page-transition,.page-is-transitioning .page-transition{transition:none}.transition-spinner{animation:none;border-color:white}}
+
+.page-transition-admin .page-transition{background:#25272d;color:#fff}
+.page-transition-admin .transition-spinner{border-color:#ffffff40;border-top-color:#fff}
+.page-transition-admin .transition-logo{display:none}

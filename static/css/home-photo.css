@@ -1,0 +1,21 @@
+body:has(.home-photo){background:#191518}
+/* Match Bootstrap's hero container at each breakpoint, on the home page only. */
+body:has(.home-photo){--home-width:100%;--home-gutter:24px}
+body:has(.home-photo)>nav.navbar{padding-inline:calc(max(0px,(100% - var(--home-width))/2) + var(--home-gutter))!important}
+.home-photo .graduation-info{max-width:var(--home-width);margin-inline:auto;padding-inline:var(--home-gutter)!important}
+.home-photo .hero-card{position:relative;width:100%;max-width:100%}
+@media(min-width:576px){body:has(.home-photo){--home-width:540px}}
+@media(min-width:768px){body:has(.home-photo){--home-width:720px}}
+@media(min-width:992px){body:has(.home-photo){--home-width:960px;--home-gutter:48px}}
+@media(min-width:1200px){body:has(.home-photo){--home-width:1140px}}
+@media(min-width:1400px){body:has(.home-photo){--home-width:1320px}}
+.home-photo{min-height:calc(100svh - 80px);position:relative;isolation:isolate;overflow:hidden;background:transparent}.home-photo>*:not(.home-gallery){position:relative;z-index:1}.home-gallery,.gallery-frame,.home-red-accent{position:absolute;inset:0;overflow:hidden}.home-gallery{z-index:0;background:#191518}.home-gallery::after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,#171217d9,#17121770 65%,#17121785);pointer-events:none}.gallery-frame{background:center center/cover no-repeat;transition:opacity 1.4s ease;opacity:0}.frame-current{opacity:1;background-image:url('../images/pic1.jpg')}.frame-next.is-visible{opacity:1}.home-red-accent{z-index:2;pointer-events:none;background:radial-gradient(ellipse at 100% 100%,#bd102fcc 0%,#9b092255 25%,transparent 62%),linear-gradient(135deg,transparent 55%,#b20d2f45 100%)}
+.home-photo .hero{background:transparent;color:#fff}.home-photo .hero h1{color:#fff;text-shadow:0 2px 25px #0002}.home-photo .hero h1 em{color:#f0adaf}.home-photo .eyebrow{color:#f3c0c0}.home-photo .hero-copy{color:#f2e6e6}.home-photo .hero-card{box-shadow:16px 16px 0 #f1c8b51c;border:1px solid #df959c55}.home-photo .graduation-info{background:transparent;border-top:1px solid #ffffff26}.home-photo .info-card{background:#fffffff5;box-shadow:0 12px 30px #0002}
+.home-awaiting{display:flex;align-items:center;justify-content:center}.home-awaiting .hero{width:100%}.home-awaiting .hero .row{min-height:calc(100svh - 80px);padding-block:24px}
+@media(max-width:991px){.home-awaiting .hero .row{justify-content:center;text-align:center;min-height:auto}.home-awaiting .hero .col-lg-7{padding-bottom:20px!important}.home-awaiting .hero-copy{margin-inline:auto}.home-awaiting .hero .col-lg-5{max-width:420px;padding-top:12px!important}.home-photo .hero h1{font-size:clamp(42px,8vw,72px)}}
+@media(prefers-reduced-motion:reduce){.gallery-frame{transition:none}.frame-next{display:none}}
+.home-photo .hero-medal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) perspective(900px) rotateY(0deg);width:min(310px,86%);height:auto;max-height:calc(100% - 90px);object-fit:contain;filter:drop-shadow(0 8px 14px #52081855);animation:hero-medal-rotate-y 8s linear infinite}
+@keyframes hero-medal-rotate-y{from{transform:translate(-50%,-50%) perspective(900px) rotateY(0deg)}to{transform:translate(-50%,-50%) perspective(900px) rotateY(360deg)}}
+@media(prefers-reduced-motion:reduce){.home-photo .hero-medal{animation:none}}
+.home-photo .graduation-info .row{justify-content:center}.graduation-progress{position:relative;display:flex;justify-content:space-between;align-items:center;margin-top:26px;padding:0 5px}.graduation-progress:before{content:'';position:absolute;left:16px;right:16px;top:50%;height:5px;border-radius:10px;background:#e8eef4;transform:translateY(-50%)}.graduation-progress i{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#a7112b;color:#fff;font-style:normal;font-size:15px;box-shadow:0 0 0 4px #fff}.graduation-progress i:last-child{background:#1f7654}.graduation-progress span{position:relative;z-index:1;width:42%;height:5px;background:linear-gradient(90deg,#a7112b,#eac66f);border-radius:10px}
+.home-photo .info-card{justify-content:center}.home-photo .info-card .info-note{margin-top:18px}

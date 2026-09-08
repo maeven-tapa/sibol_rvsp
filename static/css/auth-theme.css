@@ -1,0 +1,51 @@
+.auth-page-theme{background:#eeedef;font-family:'DM Sans',sans-serif;color:#30272c}
+.auth-header{height:88px;display:flex;align-items:center;justify-content:center;background:#fffdfb;border-bottom:1px solid #ddd3c966;position:relative;z-index:2}
+.auth-home-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:#7e132b}
+.auth-home-brand:hover{color:#a7112b}.auth-home-brand:focus-visible{outline:2px solid #a7112b;outline-offset:7px;border-radius:4px}
+.auth-seal{display:grid;place-items:center;width:39px;height:39px;border:1px solid #d6b67e;border-radius:50%;background:#a7112b;color:#fff2d9;font:italic 27px 'Playfair Display',serif;box-shadow:0 0 0 3px #a7112b0b}
+.auth-brand-text{font-size:13px;letter-spacing:2px;line-height:1.2}.auth-brand-text strong{font-weight:700}.auth-brand-text small{display:block;font-size:7px;letter-spacing:1.9px;color:#917d65;margin-top:5px}
+.auth-page-theme .login-page,.auth-page-theme .registration-page{min-height:calc(100svh - 88px);padding:36px 18px;background-color:#eeedef;background-image:radial-gradient(ellipse at 12% 12%,#a7112b0b,transparent 45%),radial-gradient(ellipse at 90% 85%,#d7b87d22,transparent 45%),radial-gradient(circle,#b28b4733 1px,transparent 1px);background-size:auto,auto,28px 28px;position:relative;isolation:isolate;overflow:hidden}
+.auth-page-theme .login-page:before,.auth-page-theme .registration-page:before{content:'';position:absolute;width:440px;height:440px;left:-245px;top:10%;border:1px solid #a7112b30;border-radius:50%;box-shadow:0 0 0 24px #eeedef,0 0 0 25px #b78b4c35,0 0 0 63px #eeedef,0 0 0 64px #a7112b18;pointer-events:none;z-index:-1}
+.auth-page-theme .login-page:after,.auth-page-theme .registration-page:after{content:'✧';font:360px/1 serif;color:#b58a4240;position:absolute;right:-95px;bottom:-50px;transform:rotate(15deg);pointer-events:none;z-index:-1}
+.auth-page-theme .login-page{background-color:#870e29;background-image:radial-gradient(ellipse at 12% 12%,#e96b6540,transparent 55%),radial-gradient(ellipse at 90% 85%,#3a071e88,transparent 60%),radial-gradient(circle,#edcc8d35 1px,transparent 1px);background-size:auto,auto,28px 28px}
+.auth-page-theme .login-page:before{border-color:#efce9955;box-shadow:0 0 0 24px #ffffff04,0 0 0 25px #efce9940,0 0 0 63px #ffffff03,0 0 0 64px #efce9925}
+.auth-page-theme .login-page:after{color:#edc98f45}
+.auth-page-theme .login-box{position:relative;isolation:isolate;overflow:hidden;background:#eeedef;color:#30272c;border:1px solid #ffffff80;border-radius:18px;box-shadow:0 22px 55px #36071940;width:min(410px,100%);padding:30px 34px}
+.auth-page-theme .login-box:before{content:'';position:absolute;z-index:-1;pointer-events:none;top:-210px;right:-130px;width:380px;height:380px;border:1px solid #f3dba455;border-radius:50%;box-shadow:0 0 0 22px #ffffff05,0 0 0 23px #f3dba422}
+.auth-page-theme .login-box:after{content:'';position:absolute;z-index:-1;pointer-events:none;bottom:-280px;left:-200px;width:480px;height:480px;border:1px solid #f3dba444;border-radius:50%;box-shadow:0 0 0 26px #ffffff04,0 0 0 27px #f3dba422}
+.login-ornament{font-family:serif;display:flex;gap:16px;align-items:center;justify-content:center;color:#ebcc91;font-size:17px;margin:0 0 15px}.login-ornament span{font-size:26px}
+.auth-page-theme .login-box h1,.auth-page-theme .registration-card h1{font-family:'Playfair Display',serif;font-weight:600;letter-spacing:-.04em;line-height:1.12}
+.auth-page-theme .login-box h1{font-size:36px;margin:12px 0 26px;color:#30272c}
+.auth-page-theme .login-box .overline{color:#a7112b}.auth-page-theme .login-box label{color:#50404a;font-size:12px}
+.auth-page-theme .login-box input{border:1px solid #f0c8bd55;border-radius:7px;background:#fffaf6;color:#35212c;min-height:45px}
+.auth-page-theme .login-box input:focus{border-color:#efcf94;box-shadow:0 0 0 3px #f2d59c28;outline:none}
+.auth-page-theme .login-box .login-submit{background:#f1d6a4;color:#601027;border:1px solid #f1d6a4;border-radius:7px;font-weight:700;min-height:46px}
+.auth-page-theme .login-box .login-submit:hover{background:#ffe4b5;border-color:#ffe4b5}.auth-page-theme .login-box .login-submit:focus-visible{outline:2px solid white;outline-offset:4px}
+.auth-page-theme .login-signup{color:#756b70;font-size:12px}.auth-page-theme .login-signup a{color:#a7112b}.auth-page-theme .login-box .text-danger{color:#a7112b!important}.auth-page-theme .login-box .alert-danger{background:#fff4ee;color:#8d0924;border-color:#ffd1c0}
+.auth-page-theme .registration-shell{width:min(460px,100%)}
+.auth-page-theme .registration-progress{border:1px solid #dcc6a47a;background:#fffdfa;box-shadow:0 4px 16px #6e46520b}
+.auth-page-theme .registration-progress li{color:#8b7f82}.auth-page-theme .registration-progress li>span{background:#eee7df;color:#92764f}.auth-page-theme .registration-progress li[aria-current]{color:#9e1631}.auth-page-theme .registration-progress li[aria-current]>span,.auth-page-theme .registration-progress li.complete>span{background:#a7112b;color:#ffe4ba}
+.auth-page-theme .registration-card{background:#fffdf9;border:1px solid #ddc59e8c;box-shadow:0 16px 38px #573e4b12;position:relative;isolation:isolate;overflow:hidden;border-radius:16px;border-top:3px solid #a7112b}
+.auth-page-theme .registration-card:after{content:'✦';position:absolute;right:18px;top:16px;color:#bc904655;font-size:25px;pointer-events:none;z-index:-1}
+.auth-page-theme .registration-card h1{font-size:32px;margin:12px 0}.auth-page-theme .registration-card .overline{color:#a7112b;font-weight:700}.auth-page-theme .registration-description{color:#787179}.auth-page-theme .registration-card label{color:#50404a}
+.auth-page-theme .registration-card .form-control{background:#f2f0f1;border-color:#e3dad8;color:#30272c}.auth-page-theme .registration-card .form-control:focus{border-color:#ba8a49;box-shadow:0 0 0 3px #b78b4c18;background:#fff}.auth-page-theme .registration-review{background:#f5f1e9;border-color:#dfcba8}.auth-page-theme .registration-review>div{border-color:#e4d8c4}.auth-page-theme .registration-hint,.auth-page-theme .registration-signin{color:#7d7079}.auth-page-theme .registration-footer{color:#8b7052}
+@media(max-width:420px){.auth-header{height:76px}.auth-page-theme .login-page,.auth-page-theme .registration-page{min-height:calc(100svh - 76px);padding:24px 14px}.auth-page-theme .login-box{padding:28px 24px}.auth-page-theme .login-box h1{font-size:32px}.auth-page-theme .registration-card h1{font-size:29px}}
+
+.auth-page-theme .registration-page{background:#a7112b;background-image:linear-gradient(155deg,#a7112b 0%,#ce4224 48%,#f78d18 100%);background-size:cover}
+
+/* Warm verification accents complement the red-to-orange background. */
+.auth-page-theme .registration-page:before{border-color:#ffffff30;box-shadow:0 0 0 24px #ffffff06,0 0 0 25px #f78d1855,0 0 0 63px #ffffff04,0 0 0 64px #ffffff20}
+.auth-page-theme .registration-page:after{color:#ffd7ac55}
+.auth-page-theme .registration-progress{background:#fff8f1;border-color:#ffd5ad;box-shadow:0 8px 24px #70091c20}
+.auth-page-theme .registration-progress li{color:#795d50}
+.auth-page-theme .registration-progress li>span{background:#ffe5cc;color:#7b3910}
+.auth-page-theme .registration-progress li[aria-current]>span,.auth-page-theme .registration-progress li.complete>span{background:#a7112b;color:#fff}
+.auth-page-theme .registration-card{background:#fffaf5;border-color:#ffd5ad;border-top-color:#f78d18;box-shadow:0 16px 38px #70091c30}
+.auth-page-theme .registration-card:after{color:#f78d1880}
+.auth-page-theme .registration-card .form-control{background:#fff3e8;border-color:#edcdb4}
+.auth-page-theme .registration-card .form-control:focus{background:#fff;border-color:#f78d18;box-shadow:0 0 0 3px #f78d182b}
+.auth-page-theme .registration-review{background:#fff0e1;border-color:#f4c69d}
+.auth-page-theme .registration-review>div{border-color:#f4d7bd}
+.auth-page-theme .registration-back{color:#804522}
+.auth-page-theme .registration-card .btn-brand:focus-visible,.auth-page-theme .registration-signin a:focus-visible{outline:3px solid #f78d18;outline-offset:3px}
+.auth-page-theme .registration-footer{color:#fff;text-shadow:0 1px 3px #70091c80;font-weight:600}

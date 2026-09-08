@@ -1,0 +1,28 @@
+{% extends 'registration/auth_base.html' %}
+{% load static %}
+{% block title %}Sign in — Sibol{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}">
+<div class="login-page">
+  <div class="login-box">
+    <header class="login-heading">
+      <div class="login-ornament" aria-hidden="true">✧ <span>✦</span> ✧</div>
+      <span class="overline">{% if admin_login %}ADMINISTRATOR SIGN IN{% else %}ACCESS YOUR PORTAL{% endif %}</span>
+      <h1>{% if admin_login %}Admin login{% else %}Your celebration<br>awaits.{% endif %}</h1>
+    </header>
+    <form method="post" {% if admin_login %}data-admin-login{% endif %}>
+      {% csrf_token %}
+      {% for error in form.non_field_errors %}<div class="alert alert-danger small" role="alert">{{ error }}</div>{% endfor %}
+      {% for field in form %}
+      <div class="login-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<div class="text-danger small" role="alert">{{ error }}</div>{% endfor %}
+      </div>
+      {% endfor %}
+      <button class="btn btn-brand w-100 login-submit">{% if admin_login %}Sign in to administration{% else %}Access my portal{% endif %}</button>
+    </form>
+    {% if not admin_login %}<p class="login-signup">New to Sibol? <a href="{% url 'register' %}">Create an account</a></p>{% endif %}
+  </div>
+</div>
+{% endblock %}

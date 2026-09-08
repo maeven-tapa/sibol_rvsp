@@ -1,0 +1,48 @@
+{% extends 'registration/auth_base.html' %}
+{% load static %}
+{% block title %}Create account — Sibol{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/register.css' %}?v=20260908-orange">
+<main class="registration-page">
+  <div class="registration-shell">
+    <ol class="registration-progress" aria-label="Account creation progress">
+      <li aria-current="step"><span>1</span><b>STUDENT<br>ID</b></li>
+      <li><span>2</span><b>PERSONAL<br>DETAILS</b></li>
+      <li><span>3</span><b>ACCOUNT<br>DETAILS</b></li>
+    </ol>
+    <div class="registration-card">
+      <form method="post" id="registration-form" data-check-url="{% url 'check_student' %}" novalidate>
+        {% csrf_token %}
+        {% if form.errors %}<div class="alert alert-danger small" role="alert">Please correct the highlighted fields below.{{ form.non_field_errors }}</div>{% endif %}
+        <section class="registration-step" data-step="0">
+          <span class="overline">STEP 01 / YOUR STUDENT ID</span>
+          <h1>Welcome to Sibol.</h1>
+          <p class="registration-description">Enter the TUP ID added by your administrator to set up your graduation portal.</p>
+          <p id="roster-error" class="text-danger small" role="alert" hidden></p>
+          <label for="{{ form.username.id_for_label }}">TUP ID <span>*</span></label>
+          {{ form.username }}{{ form.username.errors }}
+          <p class="registration-hint">Format: TUP-YY-NNNN or your campus-prefixed TUP ID.</p>
+          <button type="button" class="btn btn-brand registration-next">Continue <span>→</span></button>
+        </section>
+        <section class="registration-step" data-step="1" hidden>
+          <span class="overline">STEP 02 / A LITTLE ABOUT YOU</span>
+          <h1>Make it personal.</h1>
+          <p class="registration-description">Add your contact details to generate your portal access code.</p>
+          <p id="roster-details" class="registration-hint"></p>
+          <div class="registration-fields">
+          {% for field in form %}{% if field.name != 'username' %}
+            <div class="registration-field {% if field.name == 'first_name' or field.name == 'last_name' %}half-field{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }} <span>*</span></label>{{ field }}{{ field.errors }}
+            </div>
+          {% endif %}{% endfor %}
+          </div>
+          <div class="registration-actions"><button type="button" class="btn registration-back">← Back</button><button type="submit" class="btn btn-brand">Generate access code →</button></div>
+        </section>
+      </form>
+      <p class="registration-signin">Already verified? <a href="{% url 'login' %}">Access</a></p>
+    </div>
+    <span class="registration-footer">SIBOL · YOUR NEXT CHAPTER</span>
+  </div>
+</main>
+<script src="{% static 'js/register.js' %}?v=20260908-orange"></script>
+{% endblock %}

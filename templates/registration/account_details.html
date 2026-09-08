@@ -1,0 +1,8 @@
+{% extends 'registration/auth_base.html' %}{% load static %}
+{% block title %}Account Details — Sibol{% endblock %}
+{% block content %}<link rel="stylesheet" href="{% static 'css/register.css' %}?v=20260908-orange">
+<main class="registration-page"><div class="registration-shell">
+<ol class="registration-progress" aria-label="Account creation progress"><li class="complete"><span>1</span><b>STUDENT<br>ID</b></li><li class="complete"><span>2</span><b>PERSONAL<br>DETAILS</b></li><li aria-current="step"><span>3</span><b>ACCOUNT<br>DETAILS</b></li></ol>
+<div class="registration-card"><span class="overline">STEP 03 / ACCOUNT DETAILS</span><h1>Account Details</h1><p>Your account is ready. Save your access code to open your portal.</p>
+<div class="border rounded-3 p-4 text-center my-4"><span class="overline">YOUR ACCESS CODE</span><p class="fs-2 fw-bold mt-2 mb-0" style="letter-spacing:.12em">{{ access_code }}</p></div>
+<p class="registration-hint">Keep this code private. It is your sign-in credential.</p><a class="btn btn-brand w-100" href="{% url 'login' %}">Go to access portal / login →</a></div></div></main>{% endblock %}

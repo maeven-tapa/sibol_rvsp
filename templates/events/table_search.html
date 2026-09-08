@@ -1,0 +1,6 @@
+<form method="get" action="#{{ table.key }}-table" class="d-flex gap-2 mb-3" role="search" aria-label="Search {{ table.label }}">
+  {% for name, value in table.preserved %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <label class="visually-hidden" for="{{ table.key }}-search">Search {{ table.label }}</label>
+  <input class="form-control" type="search" id="{{ table.key }}-search" name="{{ table.key }}_q" value="{{ table.query }}" placeholder="Search {{ table.label|lower }}">
+  <button class="btn btn-outline-brand" type="submit">Search</button>
+</form>

@@ -1,0 +1,14 @@
+.login-page{padding:32px 16px}
+.login-box{width:min(400px,100%);padding:32px;border-radius:12px;box-shadow:0 12px 36px #5e343510}
+.login-heading{text-align:center}
+.login-box .brand-login{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 22px}
+.login-box .overline{display:block;font-size:10px;letter-spacing:.17em}
+.login-box h1{font-size:36px;line-height:1.08;letter-spacing:-.045em;margin:12px 0 24px}
+.login-field{margin-bottom:16px}
+.login-box label{margin:0 0 7px;font-size:12px}
+.login-box input{display:block;width:100%;min-height:44px;padding:10px 12px;border:1px solid #ded5d7;border-radius:6px;background:#fff;color:var(--ink);font:inherit;font-size:14px;transition:border-color .15s,box-shadow .15s}
+.login-box input:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px #a7112b14}
+.login-box .login-submit{min-height:46px;padding:12px;border-radius:6px;margin-top:4px}
+.login-signup{text-align:center;font-size:12px;color:#756b70;margin:20px 0 0}
+.login-signup a{color:var(--red);font-weight:600;text-underline-offset:3px}
+@media(max-width:420px){.login-box{padding:28px 24px}.login-box h1{font-size:32px}}
