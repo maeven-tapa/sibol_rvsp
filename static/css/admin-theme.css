@@ -16,5 +16,10 @@ body:has(.admin-page){background:#25272d}.admin-page{color:#302b31}.admin-page .
 .admin-page .table th,.admin-page .table td,#reservationModal .table th,#reservationModal .table td{text-align:center;vertical-align:middle}
 .admin-page .table td.icon-actions{display:table-cell;white-space:nowrap}.admin-page .table td.icon-actions form{display:inline-block}.admin-page .table td.icon-actions button{vertical-align:middle;margin:2px}
 #reservationModal .table td .d-flex{justify-content:center}
+.ceremony-detail-card{position:relative;display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:142px;padding:25px 30px;overflow:hidden;border-radius:14px;background:linear-gradient(115deg,#a7112b,#7c091e);box-shadow:0 12px 26px #00000024;color:#fff}.ceremony-detail-copy{position:relative;z-index:1;display:grid;gap:8px}.ceremony-detail-copy p{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}.ceremony-detail-copy p:first-child{font-size:20px;font-family:'Playfair Display',serif}.ceremony-detail-copy span{margin:0 7px;color:#ffc3ce}.ceremony-detail-copy small{color:#ffd9df}.ceremony-campus-logo{position:absolute;right:20px;top:50%;width:156px;height:156px;object-fit:contain;transform:translateY(-50%);opacity:.2;filter:grayscale(1) brightness(2);pointer-events:none}@media(max-width:600px){.ceremony-detail-card{min-height:0;padding:22px}.ceremony-detail-copy p{font-size:13px}.ceremony-detail-copy p:first-child{font-size:17px}.ceremony-campus-logo{right:-24px;width:130px;height:130px;opacity:.14}}
 
 .gate-entry-summary{color:#df354c;font-weight:600;margin-top:8px}
+
+/* Keep the campus emblem vivid on the right, then blend it into the card. */
+.ceremony-detail-card .ceremony-campus-logo{opacity:.46;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.08) 20%,rgba(0,0,0,.72) 57%,#000 100%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.08) 20%,rgba(0,0,0,.72) 57%,#000 100%)}
+@media(max-width:600px){.ceremony-detail-card .ceremony-campus-logo{opacity:.34}}

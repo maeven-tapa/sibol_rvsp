@@ -32,14 +32,16 @@
   let lastCode = '', lastTime = 0;
   const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', {willReadFrequently:true});
   const defaultPlaceholder = [...result.childNodes].map(node => node.cloneNode(true));
-  let resultTimer = null, showingResult = false;
+  let resultTimer = null, routeTimer = null, showingResult = false;
   function clearResult() {
     clearTimeout(resultTimer);
+    clearTimeout(routeTimer);
     showingResult = false;
     result.className = 'camera-placeholder';
     result.replaceChildren(...defaultPlaceholder.map(node => node.cloneNode(true)));
     result.hidden = Boolean(stream);
     document.querySelector('#camera-stage').classList.remove('has-result');
+    document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));
   }
   function message(type, title, detail, data = {}) {
     clearTimeout(resultTimer);
@@ -55,7 +57,7 @@
     if (data.name) { const name = document.createElement('div'); name.className = 'scan-person'; name.textContent = data.name; result.append(name); }
     if (data.type) { const kind = document.createElement('small'); kind.textContent = `${data.type} ticket`; result.append(kind); }
     const text = document.createElement('small'); text.textContent = detail; result.append(text);
-    if (type !== 'busy') resultTimer = setTimeout(clearResult, 700);
+    if (type !== 'busy') resultTimer = setTimeout(clearResult, 1500);
   }
   async function submit(code, camera = false) {
     code = code.trim().toUpperCase();
@@ -71,6 +73,7 @@
       const data = await response.json();
       if (!response.ok) {
         const duplicate = response.status === 409;
+        document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));
         const title = duplicate ? (data.admission_pending ? 'Admission needs inspection' : 'Already entered') : 'Invalid ticket';
         const detail = duplicate && data.entry_time
           ? `${data.admission_pending ? 'Attempt recorded' : 'Entered'}: ${data.entry_time}${data.admission_pending ? '. Ask the administrator to inspect the gate.' : ''}`
@@ -80,6 +83,9 @@
       }
       message('success', data.admitted ? 'Access granted' : 'Valid reservation', data.message, data);
       (data.gates || [data.gate]).forEach(gate => document.querySelector(`#route-${gate}`)?.classList.add('selected'));
+      routeTimer = setTimeout(() => {
+        document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));
+      }, 1500);
       form.elements.code.value = '';
     } catch(e) { message('error', 'Entry not confirmed', e.message + ' No automatic retry was sent.'); }
     finally { busy=false; lastTime=Date.now(); form.querySelector('button').disabled=false; document.querySelector('#camera-stage').classList.remove('busy'); form.elements.code.focus({preventScroll:true}); form.elements.code.select(); }

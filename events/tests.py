@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from .forms import SignUpForm
 from .models import Student, Ceremony, Ticket, Faculty
 from django.utils import timezone
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import GuestReservation
 
 
 class RegistrationTests(TestCase):
@@ -97,11 +99,22 @@ class CeremonyTests(TestCase):
         self.assertContains(response, 'The 2nd Commencement Exercise')
         self.assertContains(response, 'New Auditorium')
         self.assertContains(response, 'class="info-card')
+        self.assertContains(response, 'UNTIL THE PROCESSIONAL MARCH')
+        self.assertContains(response, 'class="countdown-scene"')
+        self.assertContains(response, 'DATE &amp; ASSEMBLIES')
+        self.assertContains(response, 'CEREMONY VENUE')
+        self.assertNotContains(response, 'CEREMONY DETAILS')
         self.client.force_login(self.attendee)
         self.assertEqual(self.client.get('/buy/GUEST/').status_code, 405)
-        self.client.post('/buy/GUEST/')
+        response = self.client.post('/tickets/reserve/', {'count': 1, 'relation': 'Relative', 'guest_name': 'Guest Ramos', 'receipt': SimpleUploadedFile('receipt.png', b'proof', content_type='image/png')})
+        self.assertRedirects(response, '/tickets/')
+        self.assertFalse(Ticket.objects.filter(ticket_type=Ticket.TicketType.GUEST).exists())
+        reservation = GuestReservation.objects.get()
+        self.client.force_login(self.admin)
+        self.client.post('/dashboard/', {'action': 'approve_reservation', 'reservation_id': reservation.pk})
         ticket = Ticket.objects.get(ticket_type=Ticket.TicketType.GUEST)
         self.assertEqual(ticket.ceremony, ceremony)
+        self.client.force_login(self.attendee)
         self.assertContains(self.client.get('/tickets/'), 'New Auditorium')
         self.client.force_login(self.admin)
         self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Sibol 2028','campus':'Taguig','starts_at':'2028-06-01T16:00','venue':'Next Hall'})
@@ -116,9 +129,10 @@ class CeremonyTests(TestCase):
     def test_student_can_reserve_at_most_two_guest_tickets(self):
         Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.client.force_login(self.attendee)
-        for _ in range(3):
-            self.client.post('/buy/GUEST/')
-        self.assertEqual(Ticket.objects.filter(owner=self.attendee, ticket_type=Ticket.TicketType.GUEST).count(), 2)
+        for number in range(3):
+            self.client.post('/tickets/reserve/', {'count': 1, 'relation': 'Relative', 'guest_name': f'Guest {number}', 'receipt': SimpleUploadedFile(f'receipt-{number}.png', b'proof', content_type='image/png')})
+        self.assertEqual(Ticket.objects.filter(owner=self.attendee, ticket_type=Ticket.TicketType.GUEST).count(), 0)
+        self.assertEqual(GuestReservation.objects.filter(owner=self.attendee, status='pending').count(), 2)
 
     def test_staff_adds_faculty_account_with_gate_one_pass(self):
         ceremony = Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)

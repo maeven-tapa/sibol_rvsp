@@ -52,6 +52,17 @@ class Ceremony(models.Model):
             suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(number % 10, 'th')
         return f'{number}{suffix}'
 
+    @property
+    def venue_image(self):
+        images = {
+            'Philippine International Convention Center (PICC)': 'picc.png',
+            'SMX Convention Center - Manila': 'smx.png',
+            'TUP Centennial Stage - Manila': 'tup_centenial.png',
+            'TUP Auditorium - Cavite': 'tup_auditorium.png',
+            'City of Dasmariñas Arena - Cavite': 'dasma.png',
+        }
+        return images.get(self.venue, f'{self.campus.lower()}.png')
+
 
 class ProgramItem(models.Model):
     class ItemType(models.TextChoices):
@@ -148,6 +159,23 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"{self.code} — {self.owner.get_full_name() or self.owner.username}"
+
+
+class GuestReservation(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        DECLINED = 'declined', 'Declined'
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='guest_reservations')
+    ceremony = models.ForeignKey(Ceremony, on_delete=models.PROTECT, related_name='guest_reservations')
+    guest_relation = models.CharField(max_length=20)
+    guest_name = models.CharField(max_length=150, blank=True)
+    payment_receipt = models.FileField(upload_to='receipts/')
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Guest request for {self.owner} · {self.ceremony}"
 
 
 class TicketTransfer(models.Model):

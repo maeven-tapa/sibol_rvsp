@@ -30,3 +30,35 @@ body:has(.home-photo)>nav.navbar{padding-inline:calc(max(0px,(100% - var(--home-
 .home-photo .info-card .info-note{margin:18px 0 0}
 .home-photo .ceremony-item{flex-direction:column;align-items:center;justify-content:center;gap:6px}
 @media(max-width:991px){.home-photo .graduation-info > .row{grid-template-columns:minmax(0,1fr)}}
+
+/* Event cards: matching dimensions, quiet surfaces, and one clear focal point per card. */
+.home-photo .graduation-info{padding-top:32px!important;border-top-color:#ffffff33}
+.home-photo .graduation-info>.row{gap:20px}
+.home-photo .info-card{min-height:360px;border:1px solid #ffffff73;border-radius:20px;background:linear-gradient(145deg,#fff,#f8f9fb);box-shadow:0 18px 45px #07030a2b;overflow:hidden}
+.home-photo .participants-card,.home-photo .ceremony-card{padding:30px}
+.home-photo .info-label{font-size:.68rem;letter-spacing:.15em;color:#8e1830}
+
+/* Countdown uses the selected venue as a visual anchor without competing with the numbers. */
+.home-photo .countdown-card{display:flex;padding:0;background:#241a1c}
+.home-photo .countdown-scene{position:relative;flex:1;min-height:360px;height:100%;border-radius:inherit;overflow:hidden;background:#242424}
+.home-photo .countdown-scene>img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;filter:grayscale(1) contrast(1.04) brightness(.62);transform:scale(1.02)}
+.home-photo .countdown-scene:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#20070b26 0%,#13060966 42%,#100407eb 100%);pointer-events:none}
+.home-photo .countdown-card .countdown{position:absolute;z-index:1;left:18px;right:18px;bottom:18px;padding:18px 12px 16px;border:1px solid #ffffff24;border-radius:16px;background:#160c0ee8;color:#fff;box-shadow:0 14px 30px #0000004d;backdrop-filter:blur(10px)}
+.home-photo .countdown-card .countdown h3{margin:0;text-align:center;font:700 .65rem 'DM Sans';letter-spacing:.13em;color:#fff}
+.home-photo .countdown-units{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:15px;padding-top:14px;border-top:1px solid #ffffff2b}
+.home-photo .countdown-card .countdown .countdown-units>div{min-width:0;padding:0 4px;text-align:center;background:transparent!important;border:0!important;border-right:1px solid #ffffff20;box-shadow:none!important}
+.home-photo .countdown-card .countdown .countdown-units>div:last-child{border-right:0}
+.home-photo .countdown-card .countdown b{display:block;font:700 clamp(1.3rem,2.1vw,1.65rem) 'DM Sans';line-height:1;letter-spacing:-.04em;color:#fff!important}
+.home-photo .countdown-card .countdown span{display:block;margin-top:5px;font-size:.52rem;line-height:1;letter-spacing:.06em;color:#f1dadd!important}
+
+/* Ceremony details are designed as a small, scannable itinerary. */
+.home-photo .ceremony-card{align-items:stretch;justify-content:flex-start;text-align:left}
+.home-photo .ceremony-card .info-label{display:block;padding-bottom:19px;border-bottom:1px solid #e7e8ec}
+.home-photo .ceremony-card .ceremony-item{flex:1;gap:15px;margin:0;padding:21px 0;flex-direction:row;align-items:flex-start;text-align:left}
+.home-photo .ceremony-card .ceremony-item+.ceremony-item{border-top:1px solid #e7e8ec}
+.home-photo .ceremony-card .ceremony-detail-icon{flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:#fff0f1;color:#ac1430;font:700 .62rem 'DM Sans';letter-spacing:.03em}
+.home-photo .ceremony-card .ceremony-item b{display:block;margin-top:2px;font-size:.69rem;letter-spacing:.1em;color:#33343a}
+.home-photo .ceremony-card .ceremony-item p{margin:6px 0 0;font-size:.88rem;line-height:1.45;color:#435574;overflow-wrap:anywhere}
+
+@media (min-width:768px) and (max-width:991px){.home-photo .graduation-info>.row{grid-template-columns:repeat(2,minmax(0,1fr))}.home-photo .graduation-info>.row>div:first-child{grid-column:1/-1}.home-photo .participants-card{min-height:250px}}
+@media (max-width:767px){.home-photo .graduation-info{padding-top:24px!important}.home-photo .info-card,.home-photo .countdown-scene{min-height:320px}.home-photo .participants-card,.home-photo .ceremony-card{padding:24px}.home-photo .countdown-card .countdown{left:12px;right:12px;bottom:12px}.home-photo .countdown-card .countdown b{font-size:1.25rem}}
