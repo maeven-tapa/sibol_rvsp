@@ -12,22 +12,38 @@ from . import relay
 staff = user_passes_test(lambda u: u.is_active and u.is_staff)
 
 
+def mobile_browser(request):
+    agent = request.headers.get('User-Agent', '').lower()
+    return (request.headers.get('Sec-CH-UA-Mobile') == '?1'
+            or any(token in agent for token in ('android', 'iphone', 'ipad', 'ipod', 'mobile', 'iemobile'))
+            or request.GET.get('mobile') == '1'
+            or request.POST.get('mobile') == '1')
+
+
+def station_config(request):
+    config = request.session.get('gate_setup')
+    if config and (mobile_browser(request) or config.get('mobile')):
+        return {**config, 'mode': 'verify', 'port': '', 'swapped': False, 'mobile': True}
+    return config
+
+
 @staff
 def setup(request):
     error = None
-    available = relay.ports()
+    mobile = mobile_browser(request)
+    available = [] if mobile else relay.ports()
     if request.method == 'POST':
-        mode = request.POST.get('mode')
+        mode = 'verify' if mobile else request.POST.get('mode')
         port = request.POST.get('port', '')
         try:
-            duration = float(request.POST.get('duration', '1'))
+            duration = float(request.POST.get('duration', '1')) if mode == 'entry' else 1
             if mode not in ('entry', 'in_out', 'verify') or not 0.2 <= duration <= 5:
                 raise ValueError()
-            if mode != 'verify':
+            if mode == 'entry':
                 # Open/close only: setup must never actuate the gate.
                 with relay.connection(port):
                     pass
-            request.session['gate_setup'] = {'mode': mode, 'port': port if mode != 'verify' else '', 'duration': duration, 'swapped': request.POST.get('swapped') == '1'}
+            request.session['gate_setup'] = {'mode': mode, 'mobile': mobile, 'port': port if mode == 'entry' else '', 'duration': duration, 'swapped': mode == 'entry' and request.POST.get('swapped') == '1'}
             if request.headers.get('Accept') == 'application/json':
                 return JsonResponse({'scanner_url': reverse('gate_scanner'), 'entry_url': reverse('gate_entries')})
             return redirect('gate_scanner')
@@ -37,23 +53,23 @@ def setup(request):
             error = str(exc)
     if error and request.headers.get('Accept') == 'application/json':
         return JsonResponse({'error': error}, status=400)
-    return render(request, 'events/gate_setup.html', {'ports': available, 'error': error})
+    return render(request, 'events/gate_setup.html', {'ports': available, 'error': error, 'mobile': mobile})
 
 
 @staff
 def scanner(request):
-    config = request.session.get('gate_setup')
+    config = station_config(request)
     if not config:
         return redirect('gate')
-    return render(request, 'events/gate.html', {'config': config, 'ceremony': Ceremony.objects.filter(is_active=True).first()})
+    return render(request, 'events/gate_mobile.html' if config.get('mobile') else 'events/gate.html', {'config': config, 'ceremony': Ceremony.objects.filter(is_active=True).first()})
 
 
 @staff
 @require_POST
 def scan(request):
-    config = request.session.get('gate_setup')
+    config = station_config(request)
     if not config:
-        return JsonResponse({'error': 'Choose a mode and USB port in entry setup first.'}, status=400)
+        return JsonResponse({'error': 'Choose a scanning mode in station settings first.'}, status=400)
     code = request.POST.get('code', '').strip().upper()
     ticket = Ticket.objects.select_related('owner', 'ceremony').filter(code=code).first()
     def fail(message, status=400):
@@ -64,7 +80,7 @@ def scan(request):
                 ticket.refresh_from_db(fields=['checked_in_at', 'exited_at'])
                 admission = ticket.admissions.order_by('created_at').first()
                 entered_at = ticket.checked_in_at
-                data['admission_pending'] = ticket.admissions.exclude(status='sent').exists()
+                data['admission_pending'] = ticket.admissions.exclude(status__in=['sent', 'recorded']).exists()
                 data['exited'] = ticket.exited_at is not None
                 recorded_at = entered_at or (admission.created_at if admission else None)
                 data['entry_time'] = timezone.localtime(recorded_at).strftime('%b %d, %Y %I:%M:%S %p') if recorded_at else ''
@@ -87,7 +103,7 @@ def scan(request):
     channels = [1, 2] if is_admin or direction == 'exit' else [channel]
 
     def blocked(current):
-        if current.exited_at or current.admissions.exclude(status='sent').exists():
+        if current.exited_at or current.admissions.exclude(status__in=['sent', 'recorded']).exists():
             return True
         if direction == 'exit':
             return not current.is_used or current.admissions.filter(direction='exit').exists()
@@ -98,6 +114,24 @@ def scan(request):
     data = {'name': ticket.guest_name or ticket.owner.get_full_name() or ticket.owner.username, 'type': ticket.get_ticket_type_display(), 'relay': channel, 'gate': gate, 'gates': [1, 2] if is_admin or direction == 'exit' else [gate], 'relays': channels, 'code': ticket.code, 'direction': direction}
     if config['mode'] == 'verify':
         return JsonResponse({**data, 'message': 'Valid reservation · ticket remains unused', 'admitted': False})
+    if config['mode'] == 'in_out':
+        try:
+            with transaction.atomic():
+                locked = Ticket.objects.select_for_update().get(pk=ticket.pk)
+                if blocked(locked):
+                    return fail('This ticket has already completed its scan.', 409)
+                GateAdmission.objects.create(
+                    ticket=locked, operator=request.user, port='', relay=0,
+                    direction=direction, status='recorded',
+                )
+                Ticket.objects.filter(pk=locked.pk).update(**{
+                    'exited_at' if direction == 'exit' else 'checked_in_at': timezone.now(),
+                })
+        except IntegrityError:
+            return fail('This scan has already been recorded.', 409)
+        return JsonResponse({**data, 'relay': None, 'relays': [],
+                             'message': 'Exit recorded' if direction == 'exit' else 'Entry recorded',
+                             'admitted': True})
     admissions = []
     try:
         with relay.connection(config['port']) as device:
@@ -133,5 +167,5 @@ def entries(request):
     ceremony = Ceremony.objects.filter(is_active=True).first()
     rows = GateAdmission.objects.filter(ticket__ceremony=ceremony).select_related('ticket__owner', 'operator').order_by('-created_at', '-pk')[:200] if ceremony else []
     if request.GET.get('format') == 'json':
-        return JsonResponse({'entries': [dict(time=timezone.localtime(row.created_at).strftime('%b %d, %Y %I:%M:%S %p'), name=row.ticket.owner.get_full_name() or row.ticket.owner.username, code=row.ticket.code, type=row.ticket.get_ticket_type_display(), relay=row.relay, direction=row.get_direction_display(), status=row.get_status_display(), operator=row.operator.username) for row in rows]})
+        return JsonResponse({'entries': [dict(time=timezone.localtime(row.created_at).strftime('%b %d, %Y %I:%M:%S %p'), name=row.ticket.guest_name or row.ticket.owner.get_full_name() or row.ticket.owner.username, code=row.ticket.code, type=row.ticket.get_ticket_type_display(), relay=row.relay or '—', direction=row.get_direction_display(), status=row.get_status_display(), operator=row.operator.username) for row in rows]})
     return render(request, 'events/gate_entries.html', {'ceremony': ceremony})

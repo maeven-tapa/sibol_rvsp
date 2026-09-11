@@ -27,7 +27,7 @@ class RegistrationTests(TestCase):
         self.assertEqual(user.student_profile.student, self.student)
 
     def test_registration_issues_included_student_ticket_when_ceremony_is_active(self):
-        Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
+        Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.client.post('/register/', self.details())
         self.assertTrue(Ticket.objects.filter(owner__username='TUPC-22-0042', ticket_type=Ticket.TicketType.STUDENT).exists())
 
@@ -94,6 +94,9 @@ class CeremonyTests(TestCase):
         self.client.force_login(self.admin)
         self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Sibol 2027','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Auditorium'})
         ceremony = Ceremony.objects.get(is_active=True)
+        ceremony.ticket_workflow = 'selling'
+        ceremony.payment_qr = 'payment_qr/test.png'
+        ceremony.save()
         self.client.logout()
         response = self.client.get('/')
         self.assertContains(response, 'The 2nd Commencement Exercise')
@@ -127,7 +130,7 @@ class CeremonyTests(TestCase):
         self.assertEqual(ticket.ceremony.venue, 'New Auditorium')
 
     def test_student_can_reserve_at_most_two_guest_tickets(self):
-        Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
+        Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.client.force_login(self.attendee)
         for number in range(3):
             self.client.post('/tickets/reserve/', {'count': 1, 'relation': 'Relative', 'guest_name': f'Guest {number}', 'receipt': SimpleUploadedFile(f'receipt-{number}.png', b'proof', content_type='image/png')})
@@ -135,7 +138,7 @@ class CeremonyTests(TestCase):
         self.assertEqual(GuestReservation.objects.filter(owner=self.attendee, status='pending').count(), 2)
 
     def test_staff_adds_faculty_account_with_gate_one_pass(self):
-        ceremony = Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
+        ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.client.force_login(self.admin)
         response = self.client.post('/dashboard/', {'action': 'faculty', 'email': 'faculty@example.com', 'employee_id': 'EMP-001', 'name': 'Dr. Ana Reyes', 'department': 'Registrar', 'campus': 'Manila'})
         self.assertRedirects(response, '/dashboard/')
@@ -145,7 +148,7 @@ class CeremonyTests(TestCase):
         self.assertEqual(ticket.gate, 'Student & Faculty Gate')
 
     def test_active_dashboard_hides_start_form_and_has_completion_confirmation(self):
-        Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
+        Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.client.force_login(self.admin)
         response = self.client.get('/dashboard/')
         self.assertNotContains(response, 'id="ceremony-form"')
@@ -156,7 +159,7 @@ class CeremonyTests(TestCase):
 class AdminDashboardUpdatesTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user('dashboard-admin', is_staff=True)
-        self.ceremony = Ceremony.objects.create(title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.client.force_login(self.admin)
 
     def test_admin_ticket_is_marked_displayed_and_excluded_from_totals(self):
@@ -211,7 +214,7 @@ class CeremonyHistoryTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user('history-admin', is_staff=True)
         self.client.force_login(self.admin)
-        self.ceremony = Ceremony.objects.create(title='Historic graduation', starts_at=timezone.now(), venue='Old Hall', is_active=True)
+        self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Historic graduation', starts_at=timezone.now(), venue='Old Hall', is_active=True)
 
     def test_completion_preserves_roster_and_read_only_dashboard(self):
         student = Student.objects.create(tupc_id='TUP-22-1000', name='Original Student', course='BSIT', section='4A')
@@ -228,7 +231,7 @@ class CeremonyHistoryTests(TestCase):
         self.assertEqual(faculty.user.email, 'faculty@example.com')
         faculty.name = 'Changed Faculty'
         faculty.save()
-        newer = Ceremony.objects.create(title='Next graduation', starts_at=timezone.now(), venue='New Hall', is_active=True)
+        newer = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Next graduation', starts_at=timezone.now(), venue='New Hall', is_active=True)
         Ticket.objects.create(owner=self.admin, ceremony=newer, ticket_type='GUEST')
         response = self.client.get(history_url)
         for text in ['Original Student', 'Original Faculty', 'faculty@example.com', 'Faculty Attendees', 'Ceremony history', ticket.code]:
@@ -294,7 +297,7 @@ class DashboardTableTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user('table-admin', is_staff=True)
         self.client.force_login(self.admin)
-        self.ceremony = Ceremony.objects.create(title='Tables', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Tables', starts_at=timezone.now(), venue='Hall', is_active=True)
         for number in range(31):
             Student.objects.create(tupc_id=f'TUP-22-{number:04}', name=f'Student {number:02}', course='BSIT', section='4A')
             user = User.objects.create_user(f'faculty-{number}', email=f'faculty{number}@example.com')
@@ -409,7 +412,7 @@ class StudentActionTests(TestCase):
         from .models import StudentProfile
         self.admin = User.objects.create_user('student-manager', is_staff=True)
         self.client.force_login(self.admin)
-        self.ceremony = Ceremony.objects.create(title='Current', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Current', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.student = Student.objects.create(tupc_id='TUP-22-9000', name='Original Name', course='BSIT', section='4A')
         self.user = User.objects.create_user(self.student.tupc_id)
         self.profile = StudentProfile.objects.create(student=self.student, user=self.user, contact_number='09123456789')
@@ -474,7 +477,7 @@ class ProgramEditorTests(TestCase):
         from .models import ProgramItem
         self.admin = User.objects.create_user('program-editor', is_staff=True)
         self.client.force_login(self.admin)
-        self.ceremony = Ceremony.objects.create(title='Program', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Program', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.first = ProgramItem.objects.create(ceremony=self.ceremony, item_type='speaker', title='First', speaker='N/A', position=0)
         self.second = ProgramItem.objects.create(ceremony=self.ceremony, item_type='song', title='Second', position=1)
 
@@ -527,7 +530,7 @@ class CeremonyArchiveLifecycleTests(TestCase):
         from .models import StudentProfile
         self.admin = User.objects.create_user('archive-admin', is_staff=True)
         self.client.force_login(self.admin)
-        self.ceremony = Ceremony.objects.create(title='First ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
+        self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='First ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.student = Student.objects.create(tupc_id='TUP-22-7777', name='Archived Student', course='BSIT', section='4A')
         self.user = User.objects.create_user(self.student.tupc_id)
         StudentProfile.objects.create(user=self.user, student=self.student, contact_number='09123456789')
@@ -618,7 +621,7 @@ class StudentVerificationLabelTests(TestCase):
     def test_label_changes_only_after_portal_registration(self):
         from django.test import Client
         admin = User.objects.create_user('verification-admin', is_staff=True)
-        Ceremony.objects.create(title='Ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
+        Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
         Student.objects.create(tupc_id='TUP-22-6543', name='Portal Student', course='BSIT', section='4A')
         self.client.force_login(admin)
         self.assertContains(self.client.get('/dashboard/'), '>Not Verified</span>')

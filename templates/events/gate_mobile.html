@@ -1,0 +1,31 @@
+{% extends 'base.html' %}{% load static %}
+{% block navigation %}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/entry.css' %}">
+<link rel="stylesheet" href="{% static 'css/gate-mobile.css' %}">
+<main class="entry-station mobile-station" data-mobile="true">
+  <header class="station-header">
+    <div class="station-identity"><img class="station-logo" src="{% static 'images/tupsibol_logo.png' %}" alt="TUP Sibol"><div>SIBOL<small>Reservation check (Mobile)</small></div></div>
+    <a href="{% url 'gate' %}?mobile=1" class="btn btn-outline-light">Settings</a>
+  </header>
+  <div class="mobile-scanner-body">
+    <h1>Check a reservation</h1>
+    <p class="mobile-ceremony">{% if ceremony %}{{ ceremony.title }} · {{ ceremony.starts_at|date:'M j, Y' }}{% else %}No active ceremony. Ask an administrator to start one.{% endif %}</p>
+    <section class="station-scan" aria-label="Mobile reservation scanner">
+      <div class="camera-stage" id="camera-stage">
+        <video id="gate-camera" playsinline muted aria-label="Live QR scanner camera"></video>
+        <div class="camera-placeholder" id="camera-placeholder" role="status" aria-live="polite"><img class="scanner-tup-logo" src="{% static 'images/tupsibol_logo.png' %}" alt="TUP Sibol"><b>SCAN A TICKET PASS</b><small>Allow camera access and point your camera at the QR code.</small></div>
+        <div class="camera-brackets"></div><div class="camera-sweep"></div><span class="camera-label">POSITION QR CODE INSIDE THE FRAME</span>
+      </div>
+      <p id="camera-status" role="status">Starting camera…</p>
+      <form id="scan-form" method="post" action="{% url 'gate_scan' %}">{% csrf_token %}<input type="hidden" name="mobile" value="1">
+        <label for="pass-code">Or enter a ticket code</label>
+        <div class="input-group"><input id="pass-code" name="code" class="form-control" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="SB-26-XXXXXXXX" required maxlength="64"><button class="btn btn-brand" type="submit">Verify</button></div>
+      </form>
+      <p class="mobile-note">Reservation checks keep the ticket unused.</p>
+    </section>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="{% static 'js/gate.js' %}"></script>
+{% endblock %}

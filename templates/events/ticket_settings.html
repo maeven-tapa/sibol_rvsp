@@ -1,0 +1,16 @@
+<div class="modal fade" id="ticketSettingsModal" tabindex="-1" aria-labelledby="ticket-settings-title">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="post">
+    {% csrf_token %}<input type="hidden" name="action" value="ticket_settings">
+    <div class="modal-header"><h2 class="fs-4" id="ticket-settings-title">Ticket settings</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+      <p class="small text-muted">Applies to every student and faculty member in this ceremony. Each limit includes their personal admission pass and guest tickets. Pending requests also use available slots.</p>
+      {{ ticket_settings_form.non_field_errors }}
+      <div class="mb-3">{{ ticket_settings_form.student_ticket_limit.label_tag }}{{ ticket_settings_form.student_ticket_limit }}{{ ticket_settings_form.student_ticket_limit.errors }}</div>
+      <div class="mb-3">{{ ticket_settings_form.faculty_ticket_limit.label_tag }}{{ ticket_settings_form.faculty_ticket_limit }}{{ ticket_settings_form.faculty_ticket_limit.errors }}</div>
+      <div class="form-check form-switch mb-2">{{ ticket_settings_form.auto_student_ticket }}<label class="form-check-label" for="{{ ticket_settings_form.auto_student_ticket.id_for_label }}">{{ ticket_settings_form.auto_student_ticket.label }}</label></div>
+      <p class="small text-muted">Enabled by default. When disabled, verified students request their personal pass from My tickets for administrator approval. Personal passes are free.</p>
+      <p class="small text-muted mb-0">Limits can be 1–100. Existing tickets remain valid when limits decrease; new requests, approvals, and incoming transfers follow the updated limits.</p>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-brand" data-bs-dismiss="modal">Cancel</button><button class="btn btn-brand" type="submit">Save ticket settings</button></div>
+  </form></div></div>
+</div>

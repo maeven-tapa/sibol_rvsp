@@ -10,3 +10,13 @@
 .page-transition-admin .page-transition{background:#25272d;color:#fff}
 .page-transition-admin .transition-spinner{border-color:#ffffff40;border-top-color:#fff}
 .page-transition-admin .transition-logo{display:none}
+
+[data-admin-navigation] .navbar-nav > a:hover,
+[data-admin-navigation] .navbar-nav > a:focus-visible {
+  color: #a7112b;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 7px;
+}
+[data-admin-navigation] .navbar-nav > .btn:hover,
+[data-admin-navigation] .navbar-nav > .btn:focus-visible { background-color: #fff6f6; }

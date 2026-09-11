@@ -136,3 +136,37 @@ class AdminLoginForm(AuthenticationForm):
         super().confirm_login_allowed(user)
         if not user.is_staff:
             raise forms.ValidationError('This sign-in is for administrators only.', code='invalid_login')
+
+
+class TicketSettingsForm(forms.ModelForm):
+    class Meta:
+        model = Ceremony
+        fields = ('student_ticket_limit', 'faculty_ticket_limit', 'auto_student_ticket')
+        labels = {
+            'student_ticket_limit': 'Total tickets per student',
+            'faculty_ticket_limit': 'Total tickets per faculty member',
+            'auto_student_ticket': 'Issue a student ticket automatically upon verification',
+        }
+        widgets = {
+            'student_ticket_limit': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 100}),
+            'faculty_ticket_limit': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 100}),
+            'auto_student_ticket': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class StartTicketsForm(forms.ModelForm):
+    ticket_workflow = forms.ChoiceField(choices=[('selling', 'Ticket selling'), ('requests', 'Request approval only')], widget=forms.RadioSelect)
+
+    class Meta:
+        model = Ceremony
+        fields = ('ticket_workflow', 'payment_qr')
+        widgets = {'payment_qr': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'})}
+        labels = {'payment_qr': 'QR Ph payment image'}
+
+    def clean(self):
+        data = super().clean()
+        if data.get('ticket_workflow') == 'selling' and not data.get('payment_qr'):
+            self.add_error('payment_qr', 'Upload a QR Ph payment image to start ticket selling.')
+        if data.get('ticket_workflow') == 'requests':
+            data['payment_qr'] = ''
+        return data

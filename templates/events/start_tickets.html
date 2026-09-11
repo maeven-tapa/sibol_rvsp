@@ -1,0 +1,17 @@
+{% load static %}
+<div class="modal fade" id="startTicketsModal" tabindex="-1" aria-labelledby="start-tickets-title">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="post" enctype="multipart/form-data" id="start-tickets-form">
+    {% csrf_token %}<input type="hidden" name="action" value="start_tickets">
+    <div class="modal-header"><h2 class="fs-4" id="start-tickets-title">Start ticket</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+      <p class="small text-muted">Choose how attendees will reserve tickets for this ceremony.</p>
+      {{ start_tickets_form.non_field_errors }}
+      <div class="ticket-workflow-options">{{ start_tickets_form.ticket_workflow }}{{ start_tickets_form.ticket_workflow.errors }}</div>
+      <p class="small text-muted mt-3">Ticket selling displays your QR Ph image and requires payment proof for guest reservations. Request approval only hides payment details and lets attendees upload a receipt optionally.</p>
+      <div id="payment-qr-fields"><label class="form-label" for="id_payment_qr">QR Ph payment image</label>{{ start_tickets_form.payment_qr }}{{ start_tickets_form.payment_qr.errors }}<p class="small text-muted mt-2">Upload the QR Ph image attendees should use to pay.</p><img id="payment-qr-preview" alt="QR Ph image preview" hidden></div>
+      <p class="small text-muted mb-0">Both options require administrator approval. This choice is saved for the ceremony.</p>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline-brand" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-brand" type="submit">Start ticket</button></div>
+  </form></div></div>
+</div>
+<script src="{% static 'js/start-tickets.js' %}"></script>

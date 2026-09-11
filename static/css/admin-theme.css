@@ -23,3 +23,91 @@ body:has(.admin-page){background:#25272d}.admin-page{color:#302b31}.admin-page .
 /* Keep the campus emblem vivid on the right, then blend it into the card. */
 .ceremony-detail-card .ceremony-campus-logo{opacity:.46;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.08) 20%,rgba(0,0,0,.72) 57%,#000 100%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.08) 20%,rgba(0,0,0,.72) 57%,#000 100%)}
 @media(max-width:600px){.ceremony-detail-card .ceremony-campus-logo{opacity:.34}}
+
+/* Page headings sit on the dark administration workspace. */
+.admin-page h1{color:#fff}
+.admin-page .panel-card h1{color:#302b31}
+.admin-stats .stat-card{height:100%}
+@media(max-width:767px){
+  .admin-overview>.container{padding-top:24px!important;padding-bottom:28px!important}
+  .admin-overview h1{font-size:clamp(24px,6.5vw,30px);line-height:1.2;overflow-wrap:anywhere}
+  .admin-overview h2,.admin-overview h3,.admin-overview .admin-setup h2{font-size:21px;line-height:1.25}
+  .admin-overview p{font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+  .admin-overview .overline{font-size:10px;letter-spacing:.1em}
+  .admin-overview .active-ceremony-heading{flex-direction:column;align-items:stretch!important;gap:14px}
+  .admin-overview .overview-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);width:100%}
+  .admin-overview .btn{font-size:12px;line-height:1.35;min-height:40px;padding:9px 10px;white-space:normal}
+  .admin-overview .admin-card-header{flex-wrap:wrap;gap:12px;align-items:flex-start!important}
+  .admin-overview .admin-card-header>div{min-width:0;max-width:100%}
+  .admin-overview .admin-card-header>.d-flex{width:100%;flex-wrap:wrap}
+  .admin-overview .admin-card-header .reservation-button,.admin-overview .admin-card-header form .btn{height:auto;white-space:normal}
+  .admin-overview .panel-card{padding:16px;min-width:0}
+  .admin-overview .admin-stats{--bs-gutter-x:12px;--bs-gutter-y:12px}
+  .admin-overview .stat-card{padding:14px 12px;min-width:0}
+  .admin-overview .stat-card span{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+  .admin-overview .stat-card small{font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+  .admin-overview .stat-card b{font-size:clamp(22px,6vw,28px);line-height:1.2;margin:8px 0;overflow-wrap:anywhere}
+  .admin-overview .ceremony-detail-card{padding:18px;min-height:0}
+  .admin-overview .ceremony-detail-copy{min-width:0;gap:6px}
+  .admin-overview .ceremony-detail-copy p{font-size:12px;line-height:1.5}
+  .admin-overview .ceremony-detail-copy p:first-child{font-size:17px}
+  .admin-overview .ceremony-detail-copy small{font-size:11px}
+  .admin-overview .form-label,.admin-overview label{font-size:12px}
+  .admin-overview .form-control,.admin-overview .form-select{min-width:0;max-width:100%;font-size:16px}
+  .admin-overview form>.flex-grow-1{min-width:0;flex-basis:100%}
+  .admin-overview form[role=search] .form-control{width:0;flex:1}
+  .admin-overview form[role=search] .btn{flex-shrink:0}
+  .admin-overview .table-responsive{max-width:100%;overflow-x:auto}
+  .admin-overview .table{font-size:12px}
+  .admin-overview .table th{font-size:10px;letter-spacing:.03em}
+  .admin-overview .pagination{flex-wrap:wrap;row-gap:6px}
+  .admin-overview .page-link{font-size:12px;padding:7px 9px}
+  .admin-overview-page .modal-dialog{margin:12px}
+  .admin-overview-page .modal-header,.admin-overview-page .modal-body,.admin-overview-page .modal-footer{padding:16px}
+  .admin-overview-page .modal h2,.admin-overview-page .modal h3{font-size:21px!important;line-height:1.25}
+  .admin-overview-page .modal p,.admin-overview-page .modal label{font-size:12px;line-height:1.5}
+  .admin-overview-page .modal .btn{font-size:12px;white-space:normal;min-height:40px}
+  .admin-overview-page .modal input:not([type=checkbox]):not([type=radio]),.admin-overview-page .modal select,.admin-overview-page .modal textarea{font-size:16px;max-width:100%}
+}
+
+@media(max-width:767px){
+  .admin-overview .program-summary>div{grid-template-columns:minmax(0,1fr);gap:4px}
+  .admin-overview .program-summary b{font-size:13px;overflow-wrap:anywhere}
+  .admin-overview .program-summary small{font-size:12px}
+  .admin-overview .campus-selection{gap:8px}
+  .admin-overview .campus-selection img{width:56px;flex-shrink:0}
+  .admin-overview .campus-selection span{min-width:0}
+  .admin-overview .campus-selection b{font-size:12px;overflow-wrap:anywhere}
+  .admin-overview .campus-selection button{font-size:11px;margin-right:8px;min-height:40px}
+  .admin-overview-page .campus-option{gap:8px}
+  .admin-overview-page .campus-option img{width:72px;flex-shrink:0}
+  .admin-overview-page .campus-option span{min-width:0}
+  .admin-overview-page .campus-option b{font-size:13px;overflow-wrap:anywhere}
+  .admin-overview-page .campus-option i{font-size:10px;margin-right:8px}
+}
+
+/* Centered white summary cards with distinct icons. */
+.admin-overview .admin-stats .stat-card{position:relative;overflow:hidden;text-align:center;padding:22px;border:1px solid #ece8ec;border-radius:18px;background:#fff;box-shadow:0 8px 24px #11131a0d;transition:transform .2s ease,box-shadow .2s ease;--stat-accent:#a7112b;--stat-tint:#fff0f3}
+.admin-overview .admin-stats .stat-check{--stat-accent:#137c66;--stat-tint:#eaf8f3}
+.admin-overview .admin-stats .stat-ticket{--stat-accent:#6756ae;--stat-tint:#f2effb}
+.admin-overview .admin-stats .stat-revenue{--stat-accent:#9c6716;--stat-tint:#fff7e8}
+.admin-overview .stat-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--stat-tint);color:var(--stat-accent);margin:0 auto 16px}
+.admin-overview .stat-icon svg{width:22px;height:22px}
+.admin-overview .admin-stats .stat-card>span{font-weight:600;color:#625c65}
+.admin-overview .admin-stats .stat-card>b{font-family:'DM Sans',sans-serif;font-size:34px;letter-spacing:-.04em;font-weight:700;margin:8px 0;line-height:1.1;color:#29232b}
+.admin-overview .admin-stats .stat-card>small{line-height:1.5;color:#8a808a}
+.ticket-start-card{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:116px}
+.admin-overview .ticket-start-card h3{margin:0}
+.ticket-workflow-options label{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid #e6dfe3;border-radius:10px;margin:8px 0;font-weight:600;cursor:pointer}
+.ticket-workflow-options label:has(input:checked){border-color:#a7112b;background:#fff5f7}
+.ticket-workflow-options input{accent-color:#a7112b}
+#payment-qr-preview{display:block;width:180px;max-width:100%;margin:12px auto;object-fit:contain}
+#payment-qr-preview[hidden]{display:none}
+@media(hover:hover){.admin-overview .admin-stats .stat-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px #11131a14}}
+@media(max-width:767px){
+  .admin-overview .admin-stats .stat-card{padding:16px 13px;border-radius:14px}
+  .admin-overview .stat-icon{width:34px;height:34px;border-radius:10px;margin-bottom:12px}
+  .admin-overview .stat-icon svg{width:19px;height:19px}
+  .admin-overview .admin-stats .stat-card>b{font-size:clamp(24px,6vw,30px)}
+}
+@media(prefers-reduced-motion:reduce){.admin-overview .admin-stats .stat-card{transition:none}.admin-overview .admin-stats .stat-card:hover{transform:none}}

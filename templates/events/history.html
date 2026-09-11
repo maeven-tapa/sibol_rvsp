@@ -14,5 +14,6 @@
     <button class="btn btn-outline-brand" type="submit">View ceremony</button>
   </form>
 </section>
+{% if ceremony %}{% include 'events/history_entries.html' %}{% endif %}
 {% if not ceremonies %}<section class="panel-card"><p class="text-muted mb-0">No past ceremonies yet. Completed ceremonies will appear here.</p></section>{% elif not ceremony %}<section class="panel-card"><p class="text-muted mb-0">Choose a ceremony above to display its statistics, program flow, tickets, students, and faculty.</p></section>{% endif %}
 {% endblock %}

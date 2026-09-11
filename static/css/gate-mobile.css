@@ -1,0 +1,16 @@
+.mobile-station{min-height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+.mobile-station .station-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:14px 16px;gap:12px;letter-spacing:0}
+.mobile-station .station-identity{gap:10px;min-width:0}
+.mobile-station .station-logo{width:40px;height:40px}
+.mobile-station .station-identity>div{min-width:0;font-weight:600;letter-spacing:1px;line-height:1.3}
+.mobile-station .station-identity small{margin:4px 0 0;font-size:11px;font-weight:400;letter-spacing:0;line-height:1.5;color:#b8acbf;overflow-wrap:anywhere}
+.mobile-station .station-header .btn{font-size:13px;font-weight:600;letter-spacing:0;line-height:1;min-height:44px;padding:0 14px;border-radius:8px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.mobile-scanner-body{width:100%;max-width:512px;margin:0 auto;padding:20px 16px 28px}
+.mobile-scanner-body h1{font-size:28px;margin:0 0 8px;text-align:center}
+.mobile-ceremony{font-size:13px;color:#b8acbf;line-height:1.5;margin:0 auto 20px;text-align:center;text-wrap:balance}
+.mobile-station .camera-stage{width:100%;max-width:420px;margin:auto}
+.mobile-station .camera-controls .btn{flex:1;min-height:48px;font-size:15px}
+.mobile-station #scan-form input{font-size:16px;min-width:0}
+.mobile-station #scan-form .btn{font-size:15px;min-height:48px;padding-inline:20px}
+.mobile-station #scan-form label{font-size:13px}
+.mobile-note{font-size:12px;color:#b8acbf;margin:16px 0 0;line-height:1.5}

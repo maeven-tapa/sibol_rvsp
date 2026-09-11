@@ -1,5 +1,6 @@
 (() => {
   const station = document.querySelector('.entry-station');
+  const mobile = station.dataset.mobile === 'true';
   // Keep the original entry-log tab aware of this scanner, including after reloads.
   function notifyEntryTab() {
     if (window.opener && !window.opener.closed) {
@@ -13,11 +14,12 @@
   const fullscreenStatus = document.querySelector('#fullscreen-status');
   function syncFullscreen() {
     const active = document.fullscreenElement === station;
+    if (!fullscreenButton) return;
     fullscreenButton.textContent = active ? '⛶ Exit fullscreen' : '⛶ Fullscreen';
     fullscreenButton.setAttribute('aria-pressed', String(active));
     fullscreenStatus.textContent = '';
   }
-  fullscreenButton.addEventListener('click', async () => {
+  fullscreenButton?.addEventListener('click', async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else if (station.requestFullscreen && document.fullscreenEnabled) await station.requestFullscreen();
@@ -68,7 +70,7 @@
     document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));
     message('busy', 'Checking pass…', 'Please wait for the station response.');
     try {
-      const response = await fetch(form.action, {method:'POST', headers:{'X-CSRFToken':form.elements.csrfmiddlewaretoken.value}, body:new URLSearchParams({code})});
+      const response = await fetch(form.action, {method:'POST', headers:{'X-CSRFToken':form.elements.csrfmiddlewaretoken.value}, body:new URLSearchParams({code, ...(mobile ? {mobile: '1'} : {})})});
       if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Session expired. Sign in again and reopen the station.');
       const data = await response.json();
       if (!response.ok) {
@@ -88,17 +90,17 @@
       }, 1500);
       form.elements.code.value = '';
     } catch(e) { message('error', 'Entry not confirmed', e.message + ' No automatic retry was sent.'); }
-    finally { busy=false; lastTime=Date.now(); form.querySelector('button').disabled=false; document.querySelector('#camera-stage').classList.remove('busy'); form.elements.code.focus({preventScroll:true}); form.elements.code.select(); }
+    finally { busy=false; lastTime=Date.now(); form.querySelector('button').disabled=false; document.querySelector('#camera-stage').classList.remove('busy'); if (!mobile) { form.elements.code.focus({preventScroll:true}); form.elements.code.select(); } }
   }
   form.addEventListener('submit', e => { e.preventDefault(); submit(form.elements.code.value); });
-  form.elements.code.focus({preventScroll:true});
+  if (!mobile) form.elements.code.focus({preventScroll:true});
   function stopCamera() {
     cameraGeneration++;
     if (frame) clearTimeout(frame);
     stream?.getTracks().forEach(track => track.stop()); stream=null; video.srcObject=null;
     document.querySelector('#camera-placeholder').hidden=false;
-    start.disabled=false; stop.disabled=true;
-    cameraStatus.textContent='Camera off · USB QR reader and manual entry available';
+    if (start) start.disabled=false; if (stop) stop.disabled=true;
+    cameraStatus.textContent=mobile ? 'Camera off · manual entry available' : 'Camera off · USB QR reader and manual entry available';
   }
   function detect() {
     if (!stream) return;
@@ -112,20 +114,25 @@
     }
     frame=setTimeout(detect,180);
   }
-  start.addEventListener('click', async () => {
+  async function startCamera() {
+    if (stream) return;
     const generation=++cameraGeneration;
-    start.disabled=true;
+    if (start) start.disabled=true;
     try {
-      if (!window.jsQR) throw new Error('Camera decoder did not load. Check your connection or use the USB QR reader.');
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access requires localhost or HTTPS. You can still use a USB QR reader.');
+      if (!window.jsQR) throw new Error(mobile ? 'Camera decoder did not load. Check your connection or enter the ticket code.' : 'Camera decoder did not load. Check your connection or use the USB QR reader.');
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error(mobile ? 'Camera access requires HTTPS. Open the secure site or enter the ticket code below.' : 'Camera access requires localhost or HTTPS. You can still use a USB QR reader.');
       const opened=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false});
       if (generation!==cameraGeneration) { opened.getTracks().forEach(t=>t.stop()); return; }
       stream=opened; video.srcObject=stream; await video.play();
-      clearResult(); stop.disabled=false;
+      if (generation!==cameraGeneration) return;
+      clearResult(); if (stop) stop.disabled=false;
       cameraStatus.textContent='Camera scanning · hold one QR pass inside the frame'; detect();
-    } catch(e) { stopCamera(); cameraStatus.textContent=`Camera unavailable: ${e.message}`; }
-  });
-  stop.addEventListener('click',stopCamera);
+    } catch(e) { if (generation!==cameraGeneration) return; stopCamera(); cameraStatus.textContent=`Camera unavailable: ${e.message}`; }
+  }
+  start?.addEventListener('click', startCamera);
+  stop?.addEventListener('click',stopCamera);
+  if (mobile && !document.hidden) startCamera();
+  window.addEventListener('pageshow', event => { if (mobile && event.persisted && !document.hidden) startCamera(); });
   window.addEventListener('pagehide',stopCamera);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden) stopCamera();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden) stopCamera(); else if (mobile) startCamera();});
 })();

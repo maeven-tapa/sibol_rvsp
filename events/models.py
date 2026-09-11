@@ -1,7 +1,7 @@
 import uuid
 from django.conf import settings
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Student(models.Model):
@@ -33,6 +33,11 @@ class Ceremony(models.Model):
     is_active = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
     program_saved_at = models.DateTimeField(null=True, blank=True)
+    student_ticket_limit = models.PositiveIntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(100)])
+    faculty_ticket_limit = models.PositiveIntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(100)])
+    ticket_workflow = models.CharField(max_length=10, blank=True, default='', choices=[('selling', 'Ticket selling'), ('requests', 'Request approval only')])
+    payment_qr = models.ImageField(upload_to='payment_qr/', blank=True)
+    auto_student_ticket = models.BooleanField(default=True)
     roster_snapshot = models.JSONField(null=True, blank=True)
 
     class Meta:
@@ -131,6 +136,7 @@ class Ticket(models.Model):
     ceremony = models.ForeignKey(Ceremony, on_delete=models.PROTECT, null=True, related_name="tickets")
     ticket_type = models.CharField(max_length=10, choices=TicketType.choices)
     code = models.CharField(max_length=16, unique=True, editable=False)
+    price_amount = models.PositiveIntegerField(null=True, blank=True)
     purchased_at = models.DateTimeField(auto_now_add=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     exited_at = models.DateTimeField(null=True, blank=True)
@@ -146,7 +152,7 @@ class Ticket(models.Model):
 
     @property
     def price(self):
-        return 150 if self.ticket_type == self.TicketType.GUEST else 0
+        return self.price_amount if self.price_amount is not None else (150 if self.ticket_type == self.TicketType.GUEST else 0)
 
     @property
     def gate(self):
@@ -167,11 +173,12 @@ class GuestReservation(models.Model):
         PENDING = 'pending', 'Pending'
         DECLINED = 'declined', 'Declined'
 
+    ticket_type = models.CharField(max_length=10, choices=[('GUEST', 'Guest'), ('STUDENT', 'Student')], default='GUEST')
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='guest_reservations')
     ceremony = models.ForeignKey(Ceremony, on_delete=models.PROTECT, related_name='guest_reservations')
-    guest_relation = models.CharField(max_length=20)
+    guest_relation = models.CharField(max_length=20, blank=True)
     guest_name = models.CharField(max_length=150, blank=True)
-    payment_receipt = models.FileField(upload_to='receipts/')
+    payment_receipt = models.FileField(upload_to='receipts/', blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -194,7 +201,7 @@ class GateAdmission(models.Model):
     port = models.CharField(max_length=120)
     relay = models.PositiveSmallIntegerField()
     direction = models.CharField(max_length=5, default="entry", choices=[("entry", "Entry"), ("exit", "Exit")])
-    status = models.CharField(max_length=20, default='pending', choices=[('pending', 'Pending'), ('sent', 'Pulse sent'), ('uncertain', 'Needs inspection')])
+    status = models.CharField(max_length=20, default='pending', choices=[('pending', 'Pending'), ('sent', 'Pulse sent'), ('recorded', 'Recorded'), ('uncertain', 'Needs inspection')])
     created_at = models.DateTimeField(auto_now_add=True)
     detail = models.TextField(blank=True)
 

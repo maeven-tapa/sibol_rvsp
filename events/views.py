@@ -11,20 +11,24 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from .forms import SignUpForm, StudentForm, CeremonyForm, AccessCodeForm, AdminLoginForm, FacultyForm, ProgramItemForm
-from .models import Ticket, Student, Ceremony, Faculty, StudentProfile, ProgramItem, TicketTransfer, GuestReservation
+from .forms import SignUpForm, StudentForm, CeremonyForm, AccessCodeForm, AdminLoginForm, FacultyForm, ProgramItemForm, TicketSettingsForm, StartTicketsForm
+from .models import Ticket, Student, Ceremony, Faculty, StudentProfile, ProgramItem, TicketTransfer, GuestReservation, GateAdmission
 import json
 import uuid
 from django.views.decorators.cache import never_cache
 from django.core.cache import cache
 from django.conf import settings
 from .access_codes import issue_access_code, code_digest
+from .ticket_policy import ticket_limit, issued_count, remaining_slots
 
 
 def ensure_student_ticket(user, ceremony):
     """Give every eligible account its included student pass for this ceremony."""
-    if ceremony and user.is_active and not user.is_staff and not Faculty.objects.filter(user=user).exists() and not StudentProfile.objects.filter(user=user, student__archived_ceremony__isnull=False).exists():
-        Ticket.objects.get_or_create(owner=user, ceremony=ceremony, ticket_type=Ticket.TicketType.STUDENT)
+    if ceremony and ceremony.auto_student_ticket and user.is_active and not user.is_staff and not Faculty.objects.filter(user=user).exists() and not StudentProfile.objects.filter(user=user, student__archived_ceremony__isnull=False).exists():
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=user.pk)
+            if remaining_slots(user, ceremony) and not GuestReservation.objects.filter(owner=user, ceremony=ceremony, ticket_type='STUDENT', status='pending').exists():
+                Ticket.objects.get_or_create(owner=user, ceremony=ceremony, ticket_type=Ticket.TicketType.STUDENT)
 
 def home(request):
     if request.user.is_authenticated and request.user.is_staff:
@@ -124,7 +128,12 @@ def buy_ticket(request, ticket_type):
     if not ceremony:
         messages.error(request, 'Ticket reservations open when a ceremony is announced.')
         return redirect('tickets')
-    messages.info(request, 'Submit a reservation request with payment proof. A guest ticket is issued only after administrator approval.')
+    if not ceremony.ticket_workflow:
+        messages.info(request, 'Ticket reservations have not started yet.')
+    elif ceremony.ticket_workflow == 'selling':
+        messages.info(request, 'Submit a reservation request with payment proof. A guest ticket is issued only after administrator approval.')
+    else:
+        messages.info(request, 'Submit a ticket request for administrator approval. A receipt upload is optional.')
     return redirect("tickets")
 
 
@@ -132,21 +141,49 @@ def buy_ticket(request, ticket_type):
 @require_POST
 def reserve_guests(request):
     ceremony = Ceremony.objects.filter(is_active=True).first()
-    count = int(request.POST.get('count', 0) or 0)
+    try:
+        count = int(request.POST.get('count', 0) or 0)
+    except (TypeError, ValueError):
+        count = 0
     relation = request.POST.get('relation', '')
     guest_name = request.POST.get('guest_name', '').strip()
-    if not ceremony or count not in (1, 2) or relation not in ('Relative', 'Friend') or not request.FILES.get('receipt'):
-        messages.error(request, 'Choose one or two tickets, a guest type, and upload your payment receipt.')
+    if not ceremony or not ceremony.ticket_workflow:
+        messages.error(request, 'Ticket reservations have not started yet.')
+        return redirect('tickets')
+    if request.user.is_staff or not 1 <= count <= 100 or relation not in ('Relative', 'Friend') or (ceremony.ticket_workflow == 'selling' and not request.FILES.get('receipt')):
+        messages.error(request, 'Choose a valid ticket quantity and guest type' + (', and upload your payment receipt.' if ceremony.ticket_workflow == 'selling' else '.'))
         return redirect('tickets')
     with transaction.atomic():
-        issued = Ticket.objects.select_for_update().filter(owner=request.user, ceremony=ceremony, ticket_type=Ticket.TicketType.GUEST).count()
-        requested = GuestReservation.objects.select_for_update().filter(owner=request.user, ceremony=ceremony, status=GuestReservation.Status.PENDING).count()
-        if issued + requested + count > 2:
-            messages.error(request, 'You may reserve a maximum of two guest tickets.')
+        User.objects.select_for_update().get(pk=request.user.pk)
+        ensure_student_ticket(request.user, ceremony)
+        if count > remaining_slots(request.user, ceremony):
+            messages.error(request, f'Your limit is {ticket_limit(request.user, ceremony)} total tickets, including your personal pass and pending requests.')
             return redirect('tickets')
         for number in range(count):
-            GuestReservation.objects.create(owner=request.user, ceremony=ceremony, guest_relation=relation, guest_name=guest_name if count == 1 else f'{guest_name or relation} {number + 1}', payment_receipt=request.FILES['receipt'])
+            GuestReservation.objects.create(owner=request.user, ceremony=ceremony, guest_relation=relation, guest_name=guest_name if count == 1 else f'{guest_name or relation} {number + 1}', payment_receipt=request.FILES.get('receipt', ''))
     messages.success(request, 'Guest ticket request submitted. A QR ticket will be issued after administrator approval.')
+    return redirect('tickets')
+
+
+@login_required
+@require_POST
+def reserve_student(request):
+    ceremony = Ceremony.objects.filter(is_active=True).first()
+    eligible = StudentProfile.objects.filter(user=request.user, student__is_active=True, student__archived_ceremony__isnull=True).exists()
+    if not ceremony or not ceremony.ticket_workflow or ceremony.auto_student_ticket or request.user.is_staff or not eligible or Faculty.objects.filter(user=request.user).exists():
+        messages.error(request, 'Student ticket requests are unavailable for this account.')
+        return redirect('tickets')
+    with transaction.atomic():
+        User.objects.select_for_update().get(pk=request.user.pk)
+        personal = Ticket.objects.filter(owner=request.user, ceremony=ceremony, ticket_type='STUDENT').exclude(reservation_status='declined').exists()
+        pending = GuestReservation.objects.filter(owner=request.user, ceremony=ceremony, ticket_type='STUDENT', status='pending').exists()
+        if personal or pending:
+            messages.info(request, 'You already have a student ticket or a pending request.')
+        elif not remaining_slots(request.user, ceremony):
+            messages.error(request, 'Your total ticket limit has been reached.')
+        else:
+            GuestReservation.objects.create(owner=request.user, ceremony=ceremony, ticket_type='STUDENT', payment_receipt=request.FILES.get('receipt', ''))
+            messages.success(request, 'Student ticket requested. Your pass will appear after administrator approval.')
     return redirect('tickets')
 
 
@@ -185,6 +222,11 @@ def accept_transfer(request, transfer_id):
                 or ticket.reservation_status != 'approved' or not ticket.ceremony or not ticket.ceremony.is_active):
             messages.error(request, 'This transfer is no longer available.')
             return redirect('tickets')
+        User.objects.select_for_update().get(pk=request.user.pk)
+        ensure_student_ticket(request.user, ticket.ceremony)
+        if not remaining_slots(request.user, ticket.ceremony):
+            messages.error(request, 'Your total ticket limit has been reached. This transfer was not accepted.')
+            return redirect('tickets')
         transfer.ticket = ticket
         transfer.ticket.owner = request.user
         transfer.ticket.save(update_fields=['owner'])
@@ -211,7 +253,9 @@ def tickets(request):
     tickets = request.user.tickets.select_related('ceremony').exclude(reservation_status='declined').annotate(ticket_order=Case(When(ticket_type=Ticket.TicketType.STUDENT, then=0), default=1, output_field=IntegerField())).order_by('ticket_order', 'purchased_at')
     transferable_tickets = tickets.filter(ticket_type=Ticket.TicketType.GUEST, reservation_status='approved', checked_in_at__isnull=True, ceremony__is_active=True, transfer__isnull=True)
     transfer_recipients = verified_transfer_students().exclude(pk=request.user.pk)
-    return render(request, "events/tickets.html", {"tickets": tickets, 'ceremony': ceremony, 'guest_count': guest_count, 'guest_slots': max(0, 2 - guest_count - pending_guest_requests.count()), 'pending_guest_requests': pending_guest_requests, 'incoming_transfers': incoming_transfers, 'transferable_tickets': transferable_tickets, 'transferable_ids': list(transferable_tickets.values_list('pk', flat=True)), 'transfer_recipients': transfer_recipients})
+    slots = remaining_slots(request.user, ceremony) if ceremony else 0
+    can_request_student = bool(ceremony and ceremony.ticket_workflow and not ceremony.auto_student_ticket and slots and StudentProfile.objects.filter(user=request.user, student__is_active=True, student__archived_ceremony__isnull=True).exists() and not Faculty.objects.filter(user=request.user).exists() and not tickets.filter(ceremony=ceremony, ticket_type='STUDENT').exists() and not pending_guest_requests.filter(ticket_type='STUDENT').exists())
+    return render(request, "events/tickets.html", {"tickets": tickets, 'ceremony': ceremony, 'guest_count': guest_count, 'guest_slots': slots, 'guest_quantities': range(1, slots + 1), 'ticket_limit': ticket_limit(request.user, ceremony) if ceremony else 0, 'can_request_student': can_request_student, 'pending_guest_requests': pending_guest_requests, 'incoming_transfers': incoming_transfers, 'transferable_tickets': transferable_tickets, 'transferable_ids': list(transferable_tickets.values_list('pk', flat=True)), 'transfer_recipients': transfer_recipients})
 
 def dashboard_table(request, rows, key, label, fields):
     query = request.GET.get(f'{key}_q', '').strip()
@@ -283,18 +327,47 @@ def dashboard(request, is_history=False):
         selected_ceremony = get_object_or_404(Ceremony, pk=history_id, is_active=False)
         if request.method != 'GET':
             return HttpResponseNotAllowed(['GET'])
+    ticket_settings_form = None
+    start_tickets_form = None
     student_form, ceremony_form, faculty_form, program_item_form = StudentForm(), CeremonyForm(), FacultyForm(), ProgramItemForm()
     open_modal = ''
     student_edit_form = StudentForm(prefix='edit')
     editing_student = None
     if request.method == 'POST':
+        if request.POST.get('action') == 'start_tickets':
+            with transaction.atomic():
+                current = get_object_or_404(Ceremony.objects.select_for_update(), is_active=True)
+                if current.ticket_workflow:
+                    messages.info(request, 'Tickets have already started for this ceremony.')
+                    return redirect('dashboard')
+                start_tickets_form = StartTicketsForm(request.POST, request.FILES, instance=current)
+                if start_tickets_form.is_valid():
+                    start_tickets_form.save()
+                    messages.success(request, 'Tickets started. Reservation options are now available in attendee portals.')
+                    return redirect('dashboard')
+            open_modal = 'startTicketsModal'
+        if request.POST.get('action') == 'ticket_settings':
+            current = get_object_or_404(Ceremony, is_active=True)
+            ticket_settings_form = TicketSettingsForm(request.POST, instance=current)
+            if ticket_settings_form.is_valid():
+                ticket_settings_form.save()
+                messages.success(request, 'Ticket settings saved for this ceremony.')
+                return redirect('dashboard')
+            open_modal = 'ticketSettingsModal'
         if request.POST.get('action') in ('approve_reservation', 'decline_reservation'):
             with transaction.atomic():
                 reservation = get_object_or_404(GuestReservation.objects.select_for_update(), pk=request.POST.get('reservation_id') or request.POST.get('ticket_id'), status=GuestReservation.Status.PENDING, ceremony__is_active=True)
                 if request.POST.get('action') == 'approve_reservation':
-                    Ticket.objects.create(owner=reservation.owner, ceremony=reservation.ceremony, ticket_type=Ticket.TicketType.GUEST, guest_relation=reservation.guest_relation, guest_name=reservation.guest_name, payment_receipt=reservation.payment_receipt)
+                    User.objects.select_for_update().get(pk=reservation.owner_id)
+                    if issued_count(reservation.owner, reservation.ceremony) >= ticket_limit(reservation.owner, reservation.ceremony):
+                        messages.error(request, 'This account has reached its total ticket limit. The request remains pending.')
+                        return redirect('dashboard')
+                    if reservation.ticket_type == 'STUDENT' and Ticket.objects.filter(owner=reservation.owner, ceremony=reservation.ceremony, ticket_type='STUDENT').exists():
+                        messages.error(request, 'This student already has a personal pass.')
+                        return redirect('dashboard')
+                    Ticket.objects.create(owner=reservation.owner, ceremony=reservation.ceremony, ticket_type=reservation.ticket_type, price_amount=150 if reservation.ticket_type == 'GUEST' and reservation.ceremony.ticket_workflow != 'requests' else 0, guest_relation=reservation.guest_relation, guest_name=reservation.guest_name, payment_receipt=reservation.payment_receipt)
                     reservation.delete()
-                    messages.success(request, 'Reservation approved. The guest QR ticket has been issued.')
+                    messages.success(request, 'Reservation approved. The QR ticket has been issued.')
                 else:
                     reservation.status = GuestReservation.Status.DECLINED
                     reservation.save(update_fields=['status'])
@@ -470,11 +543,14 @@ def dashboard(request, is_history=False):
     ticket_table = dashboard_table(request, ticket_list, 'tickets', 'Ticket audit', ['code', 'owner__username', 'owner__first_name', 'owner__last_name', 'owner__email', 'ticket_type'])
     student_table = dashboard_table(request, students, 'students', 'Eligible students', ['tupc_id', 'name', 'course', 'section'])
     faculty_table = dashboard_table(request, faculty_accounts, 'faculty', 'Faculty attendees', ['employee_id', 'name', 'department', 'campus', 'user__email'])
+    admission_rows = GateAdmission.objects.filter(ticket__ceremony=ceremony).select_related('ticket__owner', 'operator').order_by('-created_at', '-pk') if is_history and ceremony else GateAdmission.objects.none()
+    entry_table = dashboard_table(request, admission_rows, 'entries', 'Entry log', ['ticket__code', 'ticket__guest_name', 'ticket__owner__username', 'ticket__owner__first_name', 'ticket__owner__last_name', 'direction', 'operator__username'])
     return render(request, "events/history.html" if is_history else "events/dashboard.html", {
         'issued_student_code': request.session.pop('issued_student_code', None),
         'admin_ticket': ticket_list.filter(owner=request.user, ticket_type=Ticket.TicketType.ADMIN).first(),
-        'tickets': ticket_table['page'], 'ticket_table': ticket_table, 'student_table': student_table, 'faculty_table': faculty_table, 'total': total, 'used': used, 'guests': guests, 'revenue': revenue,
-        'student_form': student_form, 'faculty_form': faculty_form, 'ceremony_form': ceremony_form, 'program_item_form': program_item_form,
+        'entry_table': entry_table, 'admissions': entry_table['page'], 'tickets': ticket_table['page'], 'ticket_table': ticket_table, 'student_table': student_table, 'faculty_table': faculty_table, 'total': total, 'used': used, 'guests': guests, 'revenue': revenue,
+        'start_tickets_form': start_tickets_form if start_tickets_form is not None else StartTicketsForm(),
+        'ticket_settings_form': ticket_settings_form if ticket_settings_form is not None else TicketSettingsForm(instance=ceremony), 'student_form': student_form, 'faculty_form': faculty_form, 'ceremony_form': ceremony_form, 'program_item_form': program_item_form,
         'program_items': ceremony.program_items.all() if ceremony else ProgramItem.objects.none(),
         'program_editor_items': list(ceremony.program_items.values('id', 'item_type', 'title', 'description', 'speaker', 'hymn_language')) if ceremony else [],
         'pending_reservations': GuestReservation.objects.select_related('owner').filter(ceremony=ceremony, status=GuestReservation.Status.PENDING) if ceremony and not is_history else GuestReservation.objects.none(),
