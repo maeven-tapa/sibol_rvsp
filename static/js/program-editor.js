@@ -7,6 +7,7 @@
   const save = document.getElementById('program-save');
   const error = document.getElementById('program-editor-error');
   const fields = ['item_type', 'title', 'description', 'speaker', 'hymn_language'];
+  // Basahin ang saved program mula sa template; hiwalay ang editable items sa browser.
   const original = JSON.parse(document.getElementById('program-editor-data').textContent);
   let items = [], editing = null, dragging = null, saving = false;
   const speaker = value => /^(na|n\/a)$/i.test(value.trim()) ? '' : value.trim();
@@ -18,6 +19,7 @@
     add.textContent = 'Update item';
     form.elements.title.focus();
   }
+  // Baguhin ang order ng draft items at i-check muna kung valid ang target index.
   function move(from, to) {
     if (from === to || to < 0 || to >= items.length) return;
     const selected = editing === null ? null : items[editing];

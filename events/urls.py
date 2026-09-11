@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import gate_views
 
+# Dito naka-map ang URL paths sa views; ginagamit din ang names sa template links.
 urlpatterns = [
     path('register/details/', views.account_details, name='account_details'),
     path('admin-login/', views.admin_sign_in, name='admin_login'),

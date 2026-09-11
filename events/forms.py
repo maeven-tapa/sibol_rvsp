@@ -19,6 +19,7 @@ class SignUpForm(forms.ModelForm):
         self.fields['first_name'].widget.attrs['readonly'] = True
         self.fields['last_name'].widget.attrs['readonly'] = True
 
+    # Server-side roster check ito; hindi sapat ang validation sa browser lang.
     def clean_username(self):
         value = self.cleaned_data["username"].strip().upper()
         if User.objects.filter(username__iexact=value).exists():
@@ -30,11 +31,13 @@ class SignUpForm(forms.ModelForm):
     @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=False)
+        # Access code ang login ng student, kaya walang regular password dito.
         user.set_unusable_password()
         if commit:
             user.save()
         if commit:
             student = Student.objects.get(tupc_id=user.username, archived_ceremony__isnull=True)
+            # Sa official roster kinukuha ang pangalan para hindi mapalitan sa submitted form.
             user.first_name, _, user.last_name = student.name.partition(' ')
             user.save(update_fields=['first_name', 'last_name'])
             StudentProfile.objects.create(user=user, student=student, contact_number=self.cleaned_data["contact_number"])
@@ -138,6 +141,7 @@ class AdminLoginForm(AuthenticationForm):
             raise forms.ValidationError('This sign-in is for administrators only.', code='invalid_login')
 
 
+# Dito vine-validate ang ticket settings bago i-save ng admin.
 class TicketSettingsForm(forms.ModelForm):
     class Meta:
         model = Ceremony

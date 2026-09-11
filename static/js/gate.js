@@ -61,6 +61,7 @@
     const text = document.createElement('small'); text.textContent = detail; result.append(text);
     if (type !== 'busy') resultTimer = setTimeout(clearResult, 1500);
   }
+  // Iwasan ang sabay-sabay na scan; server ang magva-validate ng pass at magre-record ng result.
   async function submit(code, camera = false) {
     code = code.trim().toUpperCase();
     if (busy || !code || (camera && code === lastCode)) return;
@@ -94,6 +95,7 @@
   }
   form.addEventListener('submit', e => { e.preventDefault(); submit(form.elements.code.value); });
   if (!mobile) form.elements.code.focus({preventScroll:true});
+  // I-release ang camera tracks at pending frame kapag itinigil ang scanner.
   function stopCamera() {
     cameraGeneration++;
     if (frame) clearTimeout(frame);
@@ -102,6 +104,7 @@
     if (start) start.disabled=false; if (stop) stop.disabled=true;
     cameraStatus.textContent=mobile ? 'Camera off · manual entry available' : 'Camera off · USB QR reader and manual entry available';
   }
+  // Kunin ang video frame sa canvas para ma-decode ang QR kapag ready ang camera.
   function detect() {
     if (!stream) return;
     if (!busy && !showingResult && video.readyState >= 2) {

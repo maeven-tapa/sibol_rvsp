@@ -26,6 +26,7 @@ def ensure_student_ticket(user, ceremony):
     """Give every eligible account its included student pass for this ceremony."""
     if ceremony and ceremony.auto_student_ticket and user.is_active and not user.is_staff and not Faculty.objects.filter(user=user).exists() and not StudentProfile.objects.filter(user=user, student__archived_ceremony__isnull=False).exists():
         with transaction.atomic():
+            # I-lock ang account habang chine-check at ginagawa ang included student pass.
             User.objects.select_for_update().get(pk=user.pk)
             if remaining_slots(user, ceremony) and not GuestReservation.objects.filter(owner=user, ceremony=ceremony, ticket_type='STUDENT', status='pending').exists():
                 Ticket.objects.get_or_create(owner=user, ceremony=ceremony, ticket_type=Ticket.TicketType.STUDENT)
@@ -83,6 +84,7 @@ def account_details(request):
 def sign_in(request):
     form = AccessCodeForm(request.POST or None)
     if request.method == 'POST':
+        # Bilangin ang failed attempts per IP; may limang minutong cache timeout.
         key = 'access-login:' + request.META.get('REMOTE_ADDR', 'unknown')
         attempts = cache.get(key, 0)
         if attempts >= 10:
@@ -139,6 +141,7 @@ def buy_ticket(request, ticket_type):
 
 @login_required
 @require_POST
+# Pending requests muna ang ginagawa rito; admin approval ang susunod na hakbang.
 def reserve_guests(request):
     ceremony = Ceremony.objects.filter(is_active=True).first()
     try:
@@ -213,6 +216,7 @@ def transfer_ticket(request):
 
 @login_required
 @require_POST
+# Sa acceptance lang lilipat ang owner, matapos i-check ulit ang ticket at slots.
 def accept_transfer(request, transfer_id):
     transfer = get_object_or_404(TicketTransfer, pk=transfer_id, recipient=request.user, accepted_at__isnull=True)
     with transaction.atomic():
@@ -257,6 +261,7 @@ def tickets(request):
     can_request_student = bool(ceremony and ceremony.ticket_workflow and not ceremony.auto_student_ticket and slots and StudentProfile.objects.filter(user=request.user, student__is_active=True, student__archived_ceremony__isnull=True).exists() and not Faculty.objects.filter(user=request.user).exists() and not tickets.filter(ceremony=ceremony, ticket_type='STUDENT').exists() and not pending_guest_requests.filter(ticket_type='STUDENT').exists())
     return render(request, "events/tickets.html", {"tickets": tickets, 'ceremony': ceremony, 'guest_count': guest_count, 'guest_slots': slots, 'guest_quantities': range(1, slots + 1), 'ticket_limit': ticket_limit(request.user, ceremony) if ceremony else 0, 'can_request_student': can_request_student, 'pending_guest_requests': pending_guest_requests, 'incoming_transfers': incoming_transfers, 'transferable_tickets': transferable_tickets, 'transferable_ids': list(transferable_tickets.values_list('pk', flat=True)), 'transfer_recipients': transfer_recipients})
 
+# Shared search at pagination ito para sa live records at archived snapshot lists.
 def dashboard_table(request, rows, key, label, fields):
     query = request.GET.get(f'{key}_q', '').strip()
     if query:
@@ -292,6 +297,7 @@ def complete_ceremony(ceremony):
     # Preserve roster details and registration state as they were at completion.
     students = Student.objects.filter(archived_ceremony__isnull=True).select_related('profile').order_by('tupc_id')
     faculty = Faculty.objects.select_related('user').filter(user__tickets__ceremony=ceremony, user__tickets__ticket_type=Ticket.TicketType.FACULTY).distinct().order_by('name')
+    # Kopyahin ang roster para pareho pa rin ang history kahit magbago ang live records.
     ceremony.roster_snapshot = {
         'students': [dict(tupc_id=row.tupc_id, name=row.name, course=row.course, section=row.section, is_active=row.is_active, profile=hasattr(row, 'profile')) for row in students],
         'faculty': [dict(employee_id=row.employee_id, name=row.name, department=row.department, campus=row.campus, user=dict(username=row.user.username, email=row.user.email)) for row in faculty],
@@ -312,6 +318,7 @@ def complete_ceremony(ceremony):
 
 @never_cache
 @user_passes_test(lambda user: user.is_staff)
+# Iisang view ang gamit ng admin dashboard at history; is_history ang panghiwalay.
 def dashboard(request, is_history=False):
     history_id = request.GET.get('ceremony', '')
     if history_id and not is_history:

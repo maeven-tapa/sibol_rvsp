@@ -4,6 +4,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
+# Official roster ito; dito chine-check kung puwedeng mag-register ang student.
 class Student(models.Model):
     archived_ceremony = models.ForeignKey('Ceremony', null=True, blank=True, on_delete=models.PROTECT, related_name='archived_students')
     is_active = models.BooleanField(default=True)
@@ -16,6 +17,7 @@ class Student(models.Model):
         return f"{self.tupc_id} — {self.name}"
 
 
+# Dito naka-store ang event details at ticket rules para sa bawat ceremony.
 class Ceremony(models.Model):
     class Campus(models.TextChoices):
         CAVITE = "Cavite", "Cavite"
@@ -41,6 +43,7 @@ class Ceremony(models.Model):
     roster_snapshot = models.JSONField(null=True, blank=True)
 
     class Meta:
+        # Database rule ito para isang ceremony lang ang active sa isang panahon.
         constraints = [models.UniqueConstraint(fields=['is_active'], condition=models.Q(is_active=True), name='one_active_ceremony')]
 
     def __str__(self):
@@ -69,6 +72,7 @@ class Ceremony(models.Model):
         return images.get(self.venue, f'{self.campus.lower()}.png')
 
 
+# Bawat row ay isang program segment; position ang basehan ng pagkakasunod.
 class ProgramItem(models.Model):
     class ItemType(models.TextChoices):
         REGISTRATION = 'registration', 'Registration'
@@ -104,6 +108,7 @@ class ProgramItem(models.Model):
         return '' if value.lower() in ('na', 'n/a') else value
 
 
+# Inuugnay nito ang login account sa roster at access-code details ng student.
 class StudentProfile(models.Model):
     access_code_digest = models.CharField(max_length=64, unique=True, null=True, blank=True)
     current_access_code = models.CharField(max_length=12, blank=True)
@@ -125,6 +130,7 @@ class Faculty(models.Model):
         return f"{self.name} — {self.department}"
 
 
+# Actual QR pass ito, kasama ang owner, approval status, at entry/exit timestamps.
 class Ticket(models.Model):
     class TicketType(models.TextChoices):
         ADMIN = "ADMIN", "Admin account"
@@ -168,6 +174,7 @@ class Ticket(models.Model):
         return f"{self.code} — {self.owner.get_full_name() or self.owner.username}"
 
 
+# Request pa lang ito; hiwalay ang reservation sa actual ticket na ibibigay kapag approved.
 class GuestReservation(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'

@@ -15,5 +15,6 @@ def qr_data(value):
     image = code.make_image(image_factory=SvgPathImage)
     buffer = BytesIO()
     image.save(buffer)
+    # Gawing data URL ang SVG para direktang magamit sa img src ng template.
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/svg+xml;base64,{encoded}"

@@ -1,5 +1,6 @@
 (() => {
   const form = document.getElementById('registration-form');
+  // Hatiin sa steps ang registration at i-sync ang progress indicators habang lumilipat.
   const steps = [...form.querySelectorAll('.registration-step')];
   const indicators = [...document.querySelectorAll('.registration-progress li')];
   let current = 0;
@@ -8,6 +9,7 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let busy = false;
   let submitting = false;
+  // Pansamantalang pigilan ang interaction habang may step transition.
   function setBusy(active) {
     busy = active;
     page.classList.toggle('registration-switching', active);

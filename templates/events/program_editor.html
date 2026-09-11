@@ -1,4 +1,4 @@
-{% load static %}
+{# Editor modal ito para sa program items; JavaScript ang humahawak sa draft changes. #}{% load static %}
 <link rel="stylesheet" href="{% static 'css/program-editor.css' %}">
 {{ program_editor_items|json_script:'program-editor-data' }}
 <div class="modal fade" id="programItemModal" tabindex="-1" aria-labelledby="programItemTitle" aria-hidden="true">

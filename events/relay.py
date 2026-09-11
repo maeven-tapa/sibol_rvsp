@@ -24,6 +24,7 @@ def ports():
 def connection(port):
     if port not in {p['device'] for p in ports()}:
         raise RelayError('The selected USB port is disconnected. Return to setup and refresh ports.')
+    # Isang relay operation lang sa process na ito para hindi magsabay ang serial commands.
     if not _lock.acquire(blocking=False):
         raise RelayError('The relay is busy. Please wait for the current admission.')
     try:
@@ -53,6 +54,7 @@ def pulse_many(device, channels, duration):
         time.sleep(duration)
     finally:
         # Attempt OFF on every channel even when another channel fails.
+        # Subukang i-OFF lahat ng channels kahit may naunang command na pumalya.
         off_error = None
         for channel in channels:
             try:

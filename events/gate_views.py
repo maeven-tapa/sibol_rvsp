@@ -22,6 +22,7 @@ def mobile_browser(request):
 
 def station_config(request):
     config = request.session.get('gate_setup')
+    # Verify-only ang mobile station; walang relay command mula sa mode na ito.
     if config and (mobile_browser(request) or config.get('mobile')):
         return {**config, 'mode': 'verify', 'port': '', 'swapped': False, 'mobile': True}
     return config
@@ -87,6 +88,7 @@ def scan(request):
         return JsonResponse(data, status=status)
     if not ticket:
         return fail('Ticket not found. Present a Sibol QR pass.')
+    # I-check ang event, approval, at account bago payagang magpatuloy ang scan.
     if not ticket.ceremony or not ticket.ceremony.is_active:
         return fail('This pass is not for the active ceremony.')
     if ticket.ticket_type == Ticket.TicketType.GUEST and ticket.reservation_status != 'approved':
@@ -112,8 +114,10 @@ def scan(request):
     if blocked(ticket):
         return fail('This ticket has already completed its scan or has an admission pending inspection.', 409)
     data = {'name': ticket.guest_name or ticket.owner.get_full_name() or ticket.owner.username, 'type': ticket.get_ticket_type_display(), 'relay': channel, 'gate': gate, 'gates': [1, 2] if is_admin or direction == 'exit' else [gate], 'relays': channels, 'code': ticket.code, 'direction': direction}
+    # Validation lang ito; hindi minamarkahang used ang ticket.
     if config['mode'] == 'verify':
         return JsonResponse({**data, 'message': 'Valid reservation · ticket remains unused', 'admitted': False})
+    # Log-only mode: i-record ang entry/exit sa database nang walang USB pulse.
     if config['mode'] == 'in_out':
         try:
             with transaction.atomic():
@@ -141,6 +145,7 @@ def scan(request):
                 if blocked(locked):
                     return fail('This ticket has already entered.', 409)
                 admissions = [GateAdmission.objects.create(ticket=ticket, operator=request.user, port=config['port'], relay=number, direction=direction) for number in channels]
+            # Naka-record muna ang admission attempt bago magpadala ng physical relay command.
             if len(channels) == 2:
                 relay.pulse_many(device, channels, config['duration'])
             else:
@@ -153,6 +158,7 @@ def scan(request):
         return fail('This ticket is already being admitted. Do not scan it again.', 409)
     except relay.RelayError as exc:
         if admissions:
+            # Hindi tiyak ang physical result kapag pumalya ang relay; kailangan ng inspection.
             GateAdmission.objects.filter(pk__in=[row.pk for row in admissions], status='pending').update(status='uncertain', detail=str(exc))
             return fail('Relay communication failed during admission. The ticket is held for admin inspection; check the physical gate before retrying.', 503)
         return fail(str(exc), 503)
