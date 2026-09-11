@@ -50,7 +50,7 @@
     result.className = `camera-placeholder scan-feedback ${type}`;
     document.querySelector('#camera-stage').classList.add('has-result');
     const icon = document.createElement('span'); icon.className = 'scan-feedback-icon';
-    icon.textContent = {success:'✓', error:'✕', warning:'!', busy:'…'}[type];
+    icon.textContent = {success:'✓', exit:'⇥', error:'✕', warning:'!', busy:'…'}[type];
     icon.setAttribute('aria-hidden', 'true');
     const heading = document.createElement('b'); heading.textContent = title;
     result.replaceChildren(icon, heading);
@@ -61,7 +61,7 @@
   }
   async function submit(code, camera = false) {
     code = code.trim().toUpperCase();
-    if (busy || !code || (camera && code === lastCode && Date.now() - lastTime < 2000)) return;
+    if (busy || !code || (camera && code === lastCode)) return;
     busy = true; lastCode = code; lastTime = Date.now();
     form.querySelector('button').disabled = true;
     document.querySelector('#camera-stage').classList.add('busy');
@@ -74,14 +74,14 @@
       if (!response.ok) {
         const duplicate = response.status === 409;
         document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));
-        const title = duplicate ? (data.admission_pending ? 'Admission needs inspection' : 'Already entered') : 'Invalid ticket';
+        const title = duplicate ? (data.admission_pending ? 'Admission needs inspection' : data.exited ? 'Already exited' : 'Already entered') : 'Invalid ticket';
         const detail = duplicate && data.entry_time
           ? `${data.admission_pending ? 'Attempt recorded' : 'Entered'}: ${data.entry_time}${data.admission_pending ? '. Ask the administrator to inspect the gate.' : ''}`
           : data.error || 'Could not validate this pass.';
         message(duplicate ? 'warning' : 'error', title, detail, data);
         return;
       }
-      message('success', data.admitted ? 'Access granted' : 'Valid reservation', data.message, data);
+      message(data.direction === 'exit' ? 'exit' : 'success', data.direction === 'exit' ? 'Exit successful' : data.admitted ? 'Access granted' : 'Valid reservation', data.message, data);
       (data.gates || [data.gate]).forEach(gate => document.querySelector(`#route-${gate}`)?.classList.add('selected'));
       routeTimer = setTimeout(() => {
         document.querySelectorAll('.station-routes>div').forEach(el => el.classList.remove('selected'));

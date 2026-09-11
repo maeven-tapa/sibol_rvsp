@@ -15,3 +15,5 @@
 .camera-placeholder.scan-feedback small{font-size:12px;line-height:1.5;max-width:100%;margin:0;color:#eee8f0}
 .camera-stage.has-result .camera-sweep,.camera-stage.has-result .camera-label{visibility:hidden}
 @media(max-width:420px){.camera-placeholder.scan-feedback{inset:12px;padding:18px;gap:7px}.camera-placeholder.scan-feedback .scan-person{font-size:17px}.camera-placeholder.scan-feedback .scan-feedback-icon{width:52px;height:52px;font-size:30px}}
+
+.scan-feedback.exit{background:#102e59;color:#dbeafe;border:2px solid #60a5fa}.scan-feedback.exit .scan-feedback-icon{background:#2563eb;color:#fff}.scan-feedback.exit b,.scan-feedback.exit small{color:#dbeafe}

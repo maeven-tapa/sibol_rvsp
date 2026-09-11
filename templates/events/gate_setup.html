@@ -7,7 +7,7 @@
 <div class="entry-step-label">01 / CONNECT YOUR STATION</div><h1>Ready at the gate.</h1><p class="entry-muted">Choose how this station will handle graduation passes.</p>
 {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
 <p id="setup-error" class="text-danger" role="alert" hidden></p><form method="post" id="gate-setup-form">{% csrf_token %}
-<div class="station-modes"><label><input type="radio" name="mode" value="entry" checked><strong>Gate entry</strong><small>Admit guests and pulse the USB relay.</small></label><label><input type="radio" name="mode" value="verify"><strong>Reservation check</strong><small>Check a pass without using it or switching a relay.</small></label></div>
+<div class="station-modes"><label><input type="radio" name="mode" value="entry" checked><strong>Gate entry</strong><small>Admit guests and pulse the USB relay.</small></label><label><input type="radio" name="mode" value="in_out"><strong>In and out</strong><small>First scan: assigned entrance. Second scan: both gates open for exit.</small></label><label><input type="radio" name="mode" value="verify"><strong>Reservation check</strong><small>Check a pass without using it or switching a relay.</small></label></div>
 <div id="usb-fields"><div class="d-flex align-items-center justify-content-between mt-4"><label for="port">USB relay port</label><a href="{% url 'gate' %}" class="entry-refresh">↻ Refresh ports</a></div>
 <select name="port" id="port" class="form-select mt-2" required><option value="">Select a connected COM port</option>{% for port in ports %}<option value="{{ port.device }}">{{ port.device }} · {{ port.description }}</option>{% endfor %}</select>
 {% if not ports %}<p class="entry-muted small mt-2">No serial ports detected on the server computer. Connect the KMtronic USB board, install its VCP driver if needed, then refresh.</p>{% endif %}
@@ -18,5 +18,5 @@
 </form>
 </section></main>
 <script src="{% static 'js/gate-setup.js' %}"></script>
-<script>document.querySelectorAll('[name=mode]').forEach(el=>el.addEventListener('change',()=>{const entry=document.querySelector('[name=mode]:checked').value==='entry';document.querySelector('#usb-fields').hidden=!entry;document.querySelector('#port').required=entry;}));</script>
+<script>document.querySelectorAll('[name=mode]').forEach(el=>el.addEventListener('change',()=>{const entry=document.querySelector('[name=mode]:checked').value!=='verify';document.querySelector('#usb-fields').hidden=!entry;document.querySelector('#port').required=entry;}));</script>
 {% endblock %}

@@ -36,15 +36,28 @@ def connection(port):
 
 
 def pulse(device, channel, duration):
-    if channel not in (1, 2) or not 0.2 <= duration <= 5:
+    pulse_many(device, [channel], duration)
+
+
+def pulse_many(device, channels, duration):
+    channels = tuple(channels)
+    if not channels or any(channel not in (1, 2) for channel in channels) or not 0.2 <= duration <= 5:
         raise RelayError('Invalid relay configuration.')
-    def send(state):
+    def send(channel, state):
         if device.write(bytes([0xFF, channel, state])) != 3:
             raise RelayError('Incomplete relay command. Inspect the controller before admitting this ticket again.')
         device.flush()
     try:
-        send(1)
+        for channel in channels:
+            send(channel, 1)
         time.sleep(duration)
     finally:
-        # Always attempt OFF, including partial writes or an ON failure.
-        send(0)
+        # Attempt OFF on every channel even when another channel fails.
+        off_error = None
+        for channel in channels:
+            try:
+                send(channel, 0)
+            except (RelayError, serial.SerialException, OSError) as exc:
+                off_error = exc
+        if off_error:
+            raise off_error

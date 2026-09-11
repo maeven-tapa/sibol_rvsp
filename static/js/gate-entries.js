@@ -25,7 +25,7 @@
       if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Unable to load entries. Check your connection and sign-in.');
       const data = await response.json();
       body.replaceChildren();
-      data.entries.forEach(entry => { const row = document.createElement('tr'); ['time','name','code','type','relay','status','operator'].forEach(key => {const cell = document.createElement('td'); cell.textContent = entry[key]; row.append(cell);}); body.append(row); });
+      data.entries.forEach(entry => { const row = document.createElement('tr'); ['time','name','code','type','relay','direction','status','operator'].forEach(key => {const cell = document.createElement('td'); cell.textContent = entry[key]; row.append(cell);}); body.append(row); });
       status.textContent = data.entries.length ? `Updated ${new Date().toLocaleTimeString()}` : 'No entries yet. Admissions will appear here when a pass is scanned in gate-entry mode.';
     } catch (error) { status.textContent = error.message; }
     timer = setTimeout(refresh, 3000);

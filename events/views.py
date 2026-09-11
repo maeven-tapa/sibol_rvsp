@@ -409,8 +409,8 @@ def dashboard(request, is_history=False):
             if not ceremony:
                 messages.error(request, 'Start a ceremony before generating an admin ticket.')
                 return redirect('dashboard')
-            Ticket.objects.get_or_create(owner=request.user, ceremony=ceremony, ticket_type=Ticket.TicketType.ADMIN)
-            messages.success(request, 'Your admin ticket is ready. It permits one admission at each gate and is excluded from attendance totals.')
+            Ticket.objects.create(owner=request.user, ceremony=ceremony, ticket_type=Ticket.TicketType.ADMIN)
+            messages.success(request, 'A new admin ticket is ready. Scanning it activates both gates together. It is excluded from attendance totals.')
             return redirect('dashboard')
         elif request.POST.get('action') == 'faculty':
             ceremony = Ceremony.objects.filter(is_active=True).first()

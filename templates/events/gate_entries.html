@@ -2,7 +2,7 @@
 {% block content %}
 <main class="admin-page" data-gate-settings="{% url 'gate' %}"><div class="container py-5">
 <div class="d-flex justify-content-between align-items-center gap-3 mb-4"><div><h1>Gate entries</h1><p class="gate-entry-summary">{% if ceremony %}TUP - {{ ceremony.campus }} | {{ ceremony.title }} | {{ ceremony.starts_at|date:'h:iA' }}{% else %}No active ceremony{% endif %}</p></div><div class="d-flex gap-2"><a class="btn btn-outline-light" href="{% url 'gate' %}">Station settings</a><a class="btn btn-warning" href="{% url 'gate_scanner' %}" target="_blank" id="open-scanner">Open scanning station ↗</a></div></div>
-<section class="panel-card"><h2>Entry log</h2><p class="text-muted small">Latest 200 relay admission records for the current ceremony. Updates every 3 seconds.</p><p id="entry-log-status" role="status" class="small text-muted">Loading entries…</p><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Time</th><th>Pass holder</th><th>Ticket</th><th>Type</th><th>Relay</th><th>Status</th><th>Operator</th></tr></thead><tbody id="entry-log-body"></tbody></table></div></section>
+<section class="panel-card"><h2>Entry log</h2><p class="text-muted small">Latest 200 relay admission records for the current ceremony. Updates every 3 seconds.</p><p id="entry-log-status" role="status" class="small text-muted">Loading entries…</p><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Time</th><th>Pass holder</th><th>Ticket</th><th>Type</th><th>Relay</th><th>Direction</th><th>Status</th><th>Operator</th></tr></thead><tbody id="entry-log-body"></tbody></table></div></section>
 </div></main>
 <script src="{% static 'js/gate-entries.js' %}"></script>
 {% endblock %}

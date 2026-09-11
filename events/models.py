@@ -133,6 +133,7 @@ class Ticket(models.Model):
     code = models.CharField(max_length=16, unique=True, editable=False)
     purchased_at = models.DateTimeField(auto_now_add=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
+    exited_at = models.DateTimeField(null=True, blank=True)
     guest_relation = models.CharField(max_length=20, blank=True)
     guest_name = models.CharField(max_length=150, blank=True)
     payment_receipt = models.FileField(upload_to='receipts/', blank=True)
@@ -192,9 +193,10 @@ class GateAdmission(models.Model):
     operator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     port = models.CharField(max_length=120)
     relay = models.PositiveSmallIntegerField()
+    direction = models.CharField(max_length=5, default="entry", choices=[("entry", "Entry"), ("exit", "Exit")])
     status = models.CharField(max_length=20, default='pending', choices=[('pending', 'Pending'), ('sent', 'Pulse sent'), ('uncertain', 'Needs inspection')])
     created_at = models.DateTimeField(auto_now_add=True)
     detail = models.TextField(blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["ticket", "relay"], name="one_admission_per_ticket_gate")]
+        constraints = [models.UniqueConstraint(fields=["ticket", "relay", "direction"], name="one_admission_per_ticket_gate_direction")]

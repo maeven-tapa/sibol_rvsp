@@ -80,16 +80,64 @@ class GateTests(TestCase):
         self.assertEqual(client.post('/gate/scan/',{'code':self.ticket.code}).status_code,403)
 
     @patch('events.gate_views.relay.connection')
+    @patch('events.gate_views.relay.pulse_many')
     @patch('events.gate_views.relay.pulse')
+    def test_in_out_entry_then_exit_for_every_ticket_type(self, pulse, both, connection):
+        for swapped in ('0', '1'):
+            response = self.client.post('/gate/', {'mode': 'in_out', 'port': 'COM3', 'duration': '1', 'swapped': swapped})
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(self.client.session['gate_setup']['port'], 'COM3')
+            for kind in ('STUDENT', 'FACULTY', 'GUEST', 'ADMIN'):
+                ticket = Ticket.objects.create(owner=self.admin if kind == 'ADMIN' else self.user, ceremony=self.ceremony, ticket_type=kind)
+                entry = self.client.post('/gate/scan/', {'code': ticket.code})
+                self.assertEqual(entry.status_code, 200)
+                self.assertEqual(entry.json()['direction'], 'entry')
+                expected = 2 if kind == 'GUEST' else 1
+                expected = 3 - expected if swapped == '1' else expected
+                self.assertEqual(entry.json()['relays'], [1, 2] if kind == 'ADMIN' else [expected])
+                ticket.refresh_from_db()
+                entered_at = ticket.checked_in_at
+                response = self.client.post('/gate/scan/', {'code': ticket.code})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()['direction'], 'exit')
+                self.assertEqual(response.json()['gates'], [1, 2])
+                both.assert_called_with(connection.return_value.__enter__.return_value, [1, 2], 1)
+                ticket.refresh_from_db()
+                self.assertIsNotNone(ticket.exited_at)
+                self.assertEqual(ticket.checked_in_at, entered_at)
+                self.assertEqual(ticket.admissions.filter(direction='exit', status='sent').count(), 2)
+                before = both.call_count
+                self.assertEqual(self.client.post('/gate/scan/', {'code': ticket.code}).status_code, 409)
+                self.assertEqual(both.call_count, before)
+        self.assertContains(self.client.get('/gate/scanner/'), 'IN AND OUT')
+        self.assertTrue(any(row['direction'] == 'Exit' for row in self.client.get('/gate/entries/?format=json').json()['entries']))
+
+    @patch('events.gate_views.relay.connection')
+    @patch('events.gate_views.relay.pulse_many', side_effect=relay.RelayError('Exit failed'))
+    @patch('events.gate_views.relay.pulse')
+    def test_failed_exit_is_held_for_inspection(self, pulse, both, connection):
+        self.configure('in_out')
+        self.assertEqual(self.client.post('/gate/scan/', {'code': self.ticket.code}).status_code, 200)
+        self.assertEqual(self.client.post('/gate/scan/', {'code': self.ticket.code}).status_code, 503)
+        self.ticket.refresh_from_db()
+        self.assertIsNone(self.ticket.exited_at)
+        self.assertEqual(self.ticket.admissions.filter(direction='exit', status='uncertain').count(), 2)
+        response = self.client.post('/gate/scan/', {'code': self.ticket.code})
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(response.json()['admission_pending'])
+        both.assert_called_once()
+
+    @patch('events.gate_views.relay.connection')
+    @patch('events.gate_views.relay.pulse_many')
     def test_admin_opens_both_gates_without_selector_and_blocks_repeat(self, pulse, connection):
         self.configure()
         ticket = Ticket.objects.create(owner=self.admin, ceremony=self.ceremony, ticket_type='ADMIN')
         response = self.client.post('/gate/scan/', {'code': ticket.code})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['relays'], [1, 2])
-        self.assertEqual([call.args[1] for call in pulse.call_args_list], [1, 2])
+        pulse.assert_called_once_with(connection.return_value.__enter__.return_value, [1, 2], 1)
         self.assertEqual(self.client.post('/gate/scan/', {'code': ticket.code}).status_code, 409)
-        self.assertEqual(pulse.call_count, 2)
+        self.assertEqual(pulse.call_count, 1)
         self.assertEqual(GateAdmission.objects.filter(ticket=ticket).count(), 2)
 
     @patch('events.gate_views.relay.pulse')
@@ -141,14 +189,14 @@ class GateTests(TestCase):
         pulse.assert_not_called()
 
     @patch('events.gate_views.relay.connection')
-    @patch('events.gate_views.relay.pulse', side_effect=[None, relay.RelayError('Second relay failed')])
+    @patch('events.gate_views.relay.pulse_many', side_effect=relay.RelayError('Second relay failed'))
     def test_admin_partial_failure_is_held_without_repeating_first_relay(self, pulse, connection):
         self.configure()
         ticket = Ticket.objects.create(owner=self.admin, ceremony=self.ceremony, ticket_type='ADMIN')
         self.assertEqual(self.client.post('/gate/scan/', {'code':ticket.code}).status_code, 503)
-        self.assertEqual(list(GateAdmission.objects.filter(ticket=ticket).order_by('relay').values_list('status', flat=True)), ['sent', 'uncertain'])
+        self.assertEqual(list(GateAdmission.objects.filter(ticket=ticket).order_by('relay').values_list('status', flat=True)), ['uncertain', 'uncertain'])
         self.assertEqual(self.client.post('/gate/scan/', {'code':ticket.code}).status_code, 409)
-        self.assertEqual(pulse.call_count, 2)
+        self.assertEqual(pulse.call_count, 1)
 
     @patch('events.gate_views.relay.connection')
     @patch('events.gate_views.relay.pulse')
@@ -176,6 +224,27 @@ class GateTests(TestCase):
 
 
 class ProtocolTests(SimpleTestCase):
+    @patch('events.relay.time.sleep')
+    def test_both_relays_on_before_waiting_then_both_off(self, sleep):
+        device = MagicMock()
+        device.write.return_value = 3
+        sleep.side_effect = lambda duration: self.assertEqual(
+            [call.args[0] for call in device.write.call_args_list],
+            [bytes([255, 1, 1]), bytes([255, 2, 1])],
+        )
+        relay.pulse_many(device, [1, 2], 1)
+        sleep.assert_called_once_with(1)
+        self.assertEqual([call.args[0] for call in device.write.call_args_list],
+                         [bytes([255, 1, 1]), bytes([255, 2, 1]), bytes([255, 1, 0]), bytes([255, 2, 0])])
+
+    @patch('events.relay.time.sleep')
+    def test_both_off_attempted_when_first_off_fails(self, sleep):
+        device = MagicMock()
+        device.write.side_effect = [3, 3, 1, 3]
+        with self.assertRaises(relay.RelayError):
+            relay.pulse_many(device, [1, 2], 1)
+        self.assertEqual(device.write.call_args.args[0], bytes([255, 2, 0]))
+
     @patch('events.relay.time.sleep')
     def test_binary_pulse_then_off(self, sleep):
         for channel in (1,2):

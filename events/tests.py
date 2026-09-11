@@ -162,7 +162,8 @@ class AdminDashboardUpdatesTests(TestCase):
     def test_admin_ticket_is_marked_displayed_and_excluded_from_totals(self):
         for _ in range(2):
             self.assertRedirects(self.client.post('/dashboard/', {'action': 'admin_ticket'}), '/dashboard/')
-        ticket = Ticket.objects.get(owner=self.admin)
+        self.assertEqual(Ticket.objects.filter(owner=self.admin).count(), 2)
+        ticket = Ticket.objects.filter(owner=self.admin).first()
         self.assertEqual(ticket.ticket_type, Ticket.TicketType.ADMIN)
         ticket.checked_in_at = timezone.now()
         ticket.save()
@@ -170,9 +171,10 @@ class AdminDashboardUpdatesTests(TestCase):
         self.assertEqual(response.context['total'], 0)
         self.assertEqual(response.context['used'], 0)
         self.assertEqual(response.context['revenue'], 0)
-        self.assertContains(response, 'Admin account ticket')
+        self.assertNotContains(response, 'Admin account ticket')
+        self.assertContains(response, 'type="submit">Generate admin ticket</button>')
         self.assertContains(response, ticket.code)
-        self.assertContains(response, 'data:image/svg+xml;base64,')
+        self.assertNotContains(response, 'alt="Admin ticket QR code"')
         self.assertNotContains(response, '/admin/events/ticket/')
 
     def test_admin_ticket_requires_staff_and_active_ceremony(self):
