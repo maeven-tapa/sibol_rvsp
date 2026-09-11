@@ -1,16 +1,16 @@
-<section id="entries-table" class="panel-card mb-4">
-  <h2>Entry log</h2>
-  <p class="small text-muted">Entry and exit records for this ceremony.</p>
-  {% include 'events/table_search.html' with table=entry_table %}
-  <div class="table-responsive"><table class="table align-middle">
-    <thead><tr><th>Time</th><th>Pass holder</th><th>Ticket</th><th>Type</th><th>Direction</th><th>Relay</th><th>Status</th><th>Operator</th></tr></thead>
-    <tbody>{% for admission in admissions %}<tr>
-      <td>{{ admission.created_at|date:'M d, Y h:i:s A' }}</td>
-      <td>{{ admission.ticket.guest_name|default:admission.ticket.owner.get_full_name|default:admission.ticket.owner.username }}</td>
-      <td>{{ admission.ticket.code }}</td><td>{{ admission.ticket.get_ticket_type_display }}</td>
-      <td>{{ admission.get_direction_display }}</td><td>{{ admission.relay|default:'—' }}</td>
-      <td>{{ admission.get_status_display }}</td><td>{{ admission.operator.username }}</td>
-    </tr>{% empty %}<tr><td colspan="8" class="text-center text-muted py-4">{% if entry_table.query %}No entries match your search.{% else %}No entry or exit records for this ceremony.{% endif %}</td></tr>{% endfor %}</tbody>
-  </table></div>
-  {% include 'events/table_pagination.html' with table=entry_table %}
-</section>
+<section id="entries-table" class="panel-card mb-4">
+  <h2>Entry log</h2>
+  <p class="small text-muted">Entry and exit records for this ceremony.</p>
+  {% include 'events/table_search.html' with table=entry_table %}
+  <div class="table-responsive"><table class="table align-middle">
+    <thead><tr><th>Time</th><th>Pass holder</th><th>Ticket</th><th>Type</th><th>Direction</th><th>Relay</th><th>Status</th><th>Operator</th></tr></thead>
+    <tbody>{% for admission in admissions %}<tr>
+      <td>{{ admission.created_at|date:'M d, Y h:i:s A' }}</td>
+      <td>{{ admission.ticket.guest_name|default:admission.ticket.owner.get_full_name|default:admission.ticket.owner.username }}</td>
+      <td>{{ admission.ticket.code }}</td><td>{{ admission.ticket.get_ticket_type_display }}</td>
+      <td>{{ admission.get_direction_display }}</td><td>{{ admission.relay|default:'—' }}</td>
+      <td>{{ admission.get_status_display }}</td><td>{{ admission.operator.username }}</td>
+    </tr>{% empty %}<tr><td colspan="8" class="text-center text-muted py-4">{% if entry_table.query %}No entries match your search.{% else %}No entry or exit records for this ceremony.{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include 'events/table_pagination.html' with table=entry_table %}
+</section>
