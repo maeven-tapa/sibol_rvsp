@@ -10,8 +10,17 @@ class Student(models.Model):
     is_active = models.BooleanField(default=True)
     tupc_id = models.CharField(max_length=12, unique=True, verbose_name="TUP ID")
     name = models.CharField(max_length=300)
-    course = models.CharField(max_length=120)
-    section = models.CharField(max_length=60)
+    program_section = models.CharField("Program/Major/Year & Section", max_length=181)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    middle_initial = models.CharField(max_length=10, blank=True)
+
+    @property
+    def account_names(self):
+        if self.first_name and self.last_name:
+            return self.first_name, self.last_name
+        first, _, last = self.name.partition(" ")
+        return first, last
 
     def __str__(self):
         return f"{self.tupc_id} — {self.name}"

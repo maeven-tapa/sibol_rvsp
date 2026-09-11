@@ -61,7 +61,7 @@
         if (!response.ok) throw new Error(data.error || 'Unable to check this student ID.');
         form.elements.first_name.value = data.first_name;
         form.elements.last_name.value = data.last_name;
-        document.getElementById('roster-details').textContent = `${data.course} · ${data.section}`;
+        document.getElementById('roster-details').textContent = data.program_section;
         await pause;
         setBusy(false);
         show(1);

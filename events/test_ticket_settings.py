@@ -10,7 +10,7 @@ class TicketSettingsTests(TestCase):
         self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Sibol', starts_at=timezone.now(), venue='Hall', is_active=True)
         self.admin = User.objects.create_user('admin', is_staff=True)
         self.student = User.objects.create_user('TUPC-22-0042')
-        roster = Student.objects.create(tupc_id=self.student.username, name='Jamie Ramos', course='BSIT', section='4A')
+        roster = Student.objects.create(tupc_id=self.student.username, name='Jamie Ramos', program_section='BSIT-4A')
         StudentProfile.objects.create(user=self.student, student=roster, contact_number='09123456789', access_code_digest='verified')
         self.client.force_login(self.student)
 
@@ -134,7 +134,7 @@ class TicketSettingsTests(TestCase):
         self.ceremony.auto_student_ticket = False
         self.ceremony.save()
         self.client.logout()
-        Student.objects.create(tupc_id='TUPC-22-0043', name='Alex Ramos', course='BSIT', section='4A')
+        Student.objects.create(tupc_id='TUPC-22-0043', name='Alex Ramos', program_section='BSIT-4A')
         response = self.client.post('/register/', {'username': 'TUPC-22-0043', 'first_name': 'Alex', 'last_name': 'Ramos', 'email': 'alex@example.com', 'contact_number': '09123456789'})
         self.assertEqual(response.status_code, 302)
         user = User.objects.get(username='TUPC-22-0043')

@@ -7,7 +7,7 @@ from .models import Ceremony, Student, StudentProfile, Ticket, TicketTransfer
 class TicketTransferTests(TestCase):
     def student(self, name, verified=True):
         user = User.objects.create_user(username=name)
-        roster = Student.objects.create(tupc_id=name, name=name, course='BSIT', section='4A')
+        roster = Student.objects.create(tupc_id=name, name=name, program_section='BSIT-4A')
         StudentProfile.objects.create(user=user, student=roster, contact_number='09000000000', access_code_digest=name if verified else None)
         return user
 

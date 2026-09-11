@@ -9,7 +9,7 @@ from .models import GuestReservation
 
 class RegistrationTests(TestCase):
     def setUp(self):
-        self.student = Student.objects.create(tupc_id='TUPC-22-0042', name='Jamie Ramos', course='BSIT', section='4A')
+        self.student = Student.objects.create(tupc_id='TUPC-22-0042', name='Jamie Ramos', program_section='BSIT-4A')
 
     def details(self, **overrides):
         return dict(username='TUPC-22-0042', first_name='Jamie', last_name='Ramos', email='jamie@example.com', contact_number='09123456789', password1='Test-pass-4829!', password2='Test-pass-4829!', **overrides)
@@ -40,7 +40,7 @@ class RegistrationTests(TestCase):
 
     def test_first_step_returns_roster_identity(self):
         response = self.client.post('/register/check-id/', {'tupc_id': self.student.tupc_id})
-        self.assertEqual(response.json()['course'], 'BSIT')
+        self.assertEqual(response.json()['program_section'], 'BSIT-4A')
         self.assertEqual(response.json()['first_name'], 'Jamie')
 
     def test_login_uses_access_code(self):
@@ -80,7 +80,7 @@ class CeremonyTests(TestCase):
     def test_staff_can_add_roster_student(self):
         self.client.force_login(self.admin)
         self.client.post('/dashboard/', {'action':'ceremony','commencement_number':'2','title':'Sibol 2027','campus':'Manila','starts_at':'2027-06-01T16:00','venue':'New Auditorium'})
-        response = self.client.post('/dashboard/', {'action':'student','tupc_id':'TUPC-22-0001','name':'Alex Reyes','course':'BSIT','section':'4B'})
+        response = self.client.post('/dashboard/', {'action':'student','tupc_id':'TUPC-22-0001','name':'Alex Reyes','program_section': 'BSIT-4B'})
         self.assertRedirects(response, '/dashboard/')
         self.assertTrue(Student.objects.filter(tupc_id='TUPC-22-0001').exists())
 
@@ -203,7 +203,7 @@ class AdminDashboardUpdatesTests(TestCase):
         self.assertEqual(Faculty.objects.count(), 1)
 
     def test_general_tup_id_registration_and_login(self):
-        self.client.post('/dashboard/', {'action': 'student', 'tupc_id': 'TUP-22-0001', 'name': 'Alex Reyes', 'course': 'BSIT', 'section': '4B'})
+        self.client.post('/dashboard/', {'action': 'student', 'tupc_id': 'TUP-22-0001', 'name': 'Alex Reyes', 'program_section': 'BSIT-4B'})
         self.client.logout()
         self.assertRedirects(self.client.post('/register/', {'username': 'TUP-22-0001', 'first_name': 'Alex', 'last_name': 'Reyes', 'email': 'alex@example.com', 'contact_number': '09123456789', 'password1': 'Test-pass-4829!', 'password2': 'Test-pass-4829!'}), '/register/details/')
         code = self.client.session['registration_code']
@@ -217,7 +217,7 @@ class CeremonyHistoryTests(TestCase):
         self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Historic graduation', starts_at=timezone.now(), venue='Old Hall', is_active=True)
 
     def test_completion_preserves_roster_and_read_only_dashboard(self):
-        student = Student.objects.create(tupc_id='TUP-22-1000', name='Original Student', course='BSIT', section='4A')
+        student = Student.objects.create(tupc_id='TUP-22-1000', name='Original Student', program_section='BSIT-4A')
         self.client.post('/dashboard/', {'action': 'faculty', 'employee_id': 'EMP-HISTORY', 'name': 'Original Faculty', 'email': 'faculty@example.com', 'department': 'Registrar', 'campus': 'Manila'})
         ticket = Ticket.objects.get(ticket_type='FACULTY')
         response = self.client.post('/dashboard/', {'action': 'close_ceremony'})
@@ -299,7 +299,7 @@ class DashboardTableTests(TestCase):
         self.client.force_login(self.admin)
         self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Tables', starts_at=timezone.now(), venue='Hall', is_active=True)
         for number in range(31):
-            Student.objects.create(tupc_id=f'TUP-22-{number:04}', name=f'Student {number:02}', course='BSIT', section='4A')
+            Student.objects.create(tupc_id=f'TUP-22-{number:04}', name=f'Student {number:02}', program_section='BSIT-4A')
             user = User.objects.create_user(f'faculty-{number}', email=f'faculty{number}@example.com')
             Faculty.objects.create(user=user, employee_id=f'EMP-{number:02}', name=f'Faculty {number:02}', department='Registrar', campus='Manila')
             Ticket.objects.create(owner=user, ceremony=self.ceremony, ticket_type='FACULTY')
@@ -354,7 +354,7 @@ class AccessCodeTests(TestCase):
     def setUp(self):
         from django.core.cache import cache
         cache.clear()
-        self.student = Student.objects.create(tupc_id='TUPT-22-1111', name='Code Student', course='BSIT', section='4A')
+        self.student = Student.objects.create(tupc_id='TUPT-22-1111', name='Code Student', program_section='BSIT-4A')
 
     def register(self):
         response = self.client.post('/register/', {'username': self.student.tupc_id, 'first_name': 'Code', 'last_name': 'Student', 'email': 'code@example.com', 'contact_number': '09123456789'})
@@ -413,24 +413,23 @@ class StudentActionTests(TestCase):
         self.admin = User.objects.create_user('student-manager', is_staff=True)
         self.client.force_login(self.admin)
         self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Current', starts_at=timezone.now(), venue='Hall', is_active=True)
-        self.student = Student.objects.create(tupc_id='TUP-22-9000', name='Original Name', course='BSIT', section='4A')
+        self.student = Student.objects.create(tupc_id='TUP-22-9000', name='Original Name', program_section='BSIT-4A')
         self.user = User.objects.create_user(self.student.tupc_id)
         self.profile = StudentProfile.objects.create(student=self.student, user=self.user, contact_number='09123456789')
         self.ticket = Ticket.objects.create(owner=self.user, ceremony=self.ceremony, ticket_type='STUDENT')
 
     def test_edit_updates_roster_and_account(self):
-        response = self.client.post('/dashboard/', {'action': 'student_edit', 'student_id': self.student.pk, 'edit-tupc_id': 'TUP-22-9001', 'edit-name': 'Updated Name', 'edit-course': 'BSEE', 'edit-section': '4B'})
+        response = self.client.post('/dashboard/', {'action': 'student_edit', 'student_id': self.student.pk, 'edit-tupc_id': 'TUP-22-9001', 'edit-name': 'Updated Name', 'edit-program_section': 'BSEE-4B'})
         self.assertRedirects(response, '/dashboard/')
         self.student.refresh_from_db()
         self.user.refresh_from_db()
-        self.assertEqual(self.student.course, 'BSEE')
-        self.assertEqual(self.student.section, '4B')
+        self.assertEqual(self.student.program_section, 'BSEE-4B')
         self.assertEqual(self.user.username, 'TUP-22-9001')
         self.assertEqual(self.user.get_full_name(), 'Updated Name')
         self.assertEqual(Ticket.objects.get(pk=self.ticket.pk).owner_id, self.user.pk)
 
     def test_invalid_edit_reopens_panel_without_saving(self):
-        response = self.client.post('/dashboard/', {'action': 'student_edit', 'student_id': self.student.pk, 'edit-tupc_id': 'invalid', 'edit-name': 'Changed', 'edit-course': 'BSIT', 'edit-section': '4A'})
+        response = self.client.post('/dashboard/', {'action': 'student_edit', 'student_id': self.student.pk, 'edit-tupc_id': 'invalid', 'edit-name': 'Changed', 'edit-program_section': 'BSIT-4A'})
         self.assertEqual(response.context['open_modal'], 'studentEditModal')
         self.assertTrue(response.context['student_edit_form'].errors)
         self.student.refresh_from_db()
@@ -446,7 +445,7 @@ class StudentActionTests(TestCase):
         self.client.post('/dashboard/', {'action': 'student_enable', 'student_id': self.student.pk})
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_active)
-        unregistered = Student.objects.create(tupc_id='TUP-22-9002', name='New Student', course='BSIT', section='4A')
+        unregistered = Student.objects.create(tupc_id='TUP-22-9002', name='New Student', program_section='BSIT-4A')
         self.client.post('/dashboard/', {'action': 'student_disable', 'student_id': unregistered.pk})
         self.assertEqual(self.client.post('/register/check-id/', {'tupc_id': unregistered.tupc_id}).status_code, 400)
         form = SignUpForm()
@@ -531,7 +530,7 @@ class CeremonyArchiveLifecycleTests(TestCase):
         self.admin = User.objects.create_user('archive-admin', is_staff=True)
         self.client.force_login(self.admin)
         self.ceremony = Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='First ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
-        self.student = Student.objects.create(tupc_id='TUP-22-7777', name='Archived Student', course='BSIT', section='4A')
+        self.student = Student.objects.create(tupc_id='TUP-22-7777', name='Archived Student', program_section='BSIT-4A')
         self.user = User.objects.create_user(self.student.tupc_id)
         StudentProfile.objects.create(user=self.user, student=self.student, contact_number='09123456789')
         self.ticket = Ticket.objects.create(owner=self.user, ceremony=self.ceremony, ticket_type='STUDENT')
@@ -562,7 +561,7 @@ class CeremonyArchiveLifecycleTests(TestCase):
         ensure_student_ticket(self.user, new)
         self.assertFalse(new.tickets.exists())
         self.assertEqual(self.client.post('/dashboard/', {'action':'student_enable', 'student_id':self.student.pk}).status_code, 404)
-        self.client.post('/dashboard/', {'action':'student','tupc_id':'TUP-23-8888','name':'New Student','course':'BSIT','section':'4B'})
+        self.client.post('/dashboard/', {'action':'student','tupc_id':'TUP-23-8888','name':'New Student','program_section': 'BSIT-4B'})
         dashboard = self.client.get('/dashboard/')
         self.assertEqual(dashboard.context['students'].paginator.count, 1)
         self.assertNotContains(dashboard, 'Archived Student')
@@ -575,7 +574,7 @@ class CeremonyArchiveLifecycleTests(TestCase):
     def test_archived_unregistered_student_cannot_register(self):
         from .forms import SignUpForm
         from django.core.exceptions import ValidationError
-        unregistered = Student.objects.create(tupc_id='TUP-22-7778', name='Unregistered', course='BSIT', section='4A')
+        unregistered = Student.objects.create(tupc_id='TUP-22-7778', name='Unregistered', program_section='BSIT-4A')
         self.client.post('/dashboard/', {'action':'close_ceremony'})
         self.assertEqual(self.client.post('/register/check-id/', {'tupc_id':unregistered.tupc_id}).status_code, 400)
         form = SignUpForm()
@@ -622,7 +621,7 @@ class StudentVerificationLabelTests(TestCase):
         from django.test import Client
         admin = User.objects.create_user('verification-admin', is_staff=True)
         Ceremony.objects.create(ticket_workflow='selling', payment_qr='payment_qr/test.png', title='Ceremony', starts_at=timezone.now(), venue='Hall', is_active=True)
-        Student.objects.create(tupc_id='TUP-22-6543', name='Portal Student', course='BSIT', section='4A')
+        Student.objects.create(tupc_id='TUP-22-6543', name='Portal Student', program_section='BSIT-4A')
         self.client.force_login(admin)
         self.assertContains(self.client.get('/dashboard/'), '>Not Verified</span>')
         portal = Client()

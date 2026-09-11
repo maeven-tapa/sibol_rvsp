@@ -111,3 +111,17 @@ body:has(.admin-page){background:#25272d}.admin-page{color:#302b31}.admin-page .
   .admin-overview .admin-stats .stat-card>b{font-size:clamp(24px,6vw,30px)}
 }
 @media(prefers-reduced-motion:reduce){.admin-overview .admin-stats .stat-card{transition:none}.admin-overview .admin-stats .stat-card:hover{transform:none}}
+
+/* Iisang title size sa overview cards kahit h2 o h3 ang heading tag. */
+.admin-overview .panel-card h2,
+.admin-overview .panel-card h3 {
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 500;
+}
+@media (max-width: 767px) {
+  .admin-overview .panel-card h2,
+  .admin-overview .panel-card h3 {
+    font-size: 22px;
+  }
+}

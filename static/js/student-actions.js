@@ -6,7 +6,7 @@
     const form = edit.querySelector('form');
     form.querySelectorAll('.errorlist').forEach(error => error.remove());
     form.elements.student_id.value = button.dataset.studentId;
-    for (const [field, key] of Object.entries({tupc_id: 'tupcId', name: 'name', course: 'course', section: 'section'})) {
+    for (const [field, key] of Object.entries({tupc_id: 'tupcId', name: 'name', program_section: 'programSection'})) {
       form.elements[`edit-${field}`].value = button.dataset[key];
     }
   });

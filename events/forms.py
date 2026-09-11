@@ -38,7 +38,7 @@ class SignUpForm(forms.ModelForm):
         if commit:
             student = Student.objects.get(tupc_id=user.username, archived_ceremony__isnull=True)
             # Sa official roster kinukuha ang pangalan para hindi mapalitan sa submitted form.
-            user.first_name, _, user.last_name = student.name.partition(' ')
+            user.first_name, user.last_name = student.account_names
             user.save(update_fields=['first_name', 'last_name'])
             StudentProfile.objects.create(user=user, student=student, contact_number=self.cleaned_data["contact_number"])
         return user
@@ -52,7 +52,16 @@ class StudentForm(forms.ModelForm):
 
     class Meta:
         model = Student
-        fields = ('tupc_id', 'name', 'course', 'section')
+        fields = ('tupc_id', 'name', 'program_section')
+        widgets = {'program_section': forms.TextInput(attrs={'placeholder': 'BET-COET-4A'})}
+
+    def save(self, commit=True):
+        student = super().save(commit=False)
+        if 'name' in self.changed_data:
+            student.first_name = student.last_name = student.middle_initial = ''
+        if commit:
+            student.save()
+        return student
 
     def clean_tupc_id(self):
         value = self.cleaned_data['tupc_id'].upper()

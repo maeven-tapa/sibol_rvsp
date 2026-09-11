@@ -1,9 +1,11 @@
 from django.urls import path
 from . import views
-from . import gate_views
+from . import gate_views, student_import
 
 # Dito naka-map ang URL paths sa views; ginagamit din ang names sa template links.
 urlpatterns = [
+    path('dashboard/students/import/', student_import.import_students, name='student_import'),
+    path('dashboard/students/template/', student_import.download_template, name='student_import_template'),
     path('register/details/', views.account_details, name='account_details'),
     path('admin-login/', views.admin_sign_in, name='admin_login'),
     path('register/check-id/', views.check_student, name='check_student'),

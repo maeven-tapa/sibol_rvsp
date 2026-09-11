@@ -15,8 +15,8 @@ class GateAdmissionAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('tupc_id', 'name', 'course', 'section')
-    search_fields = ('tupc_id', 'name', 'course', 'section')
+    list_display = ('tupc_id', 'name', 'program_section')
+    search_fields = ('tupc_id', 'name', 'program_section')
 
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):

@@ -299,7 +299,7 @@ def complete_ceremony(ceremony):
     faculty = Faculty.objects.select_related('user').filter(user__tickets__ceremony=ceremony, user__tickets__ticket_type=Ticket.TicketType.FACULTY).distinct().order_by('name')
     # Kopyahin ang roster para pareho pa rin ang history kahit magbago ang live records.
     ceremony.roster_snapshot = {
-        'students': [dict(tupc_id=row.tupc_id, name=row.name, course=row.course, section=row.section, is_active=row.is_active, profile=hasattr(row, 'profile')) for row in students],
+        'students': [dict(tupc_id=row.tupc_id, name=row.name, program_section=row.program_section, is_active=row.is_active, profile=hasattr(row, 'profile')) for row in students],
         'faculty': [dict(employee_id=row.employee_id, name=row.name, department=row.department, campus=row.campus, user=dict(username=row.user.username, email=row.user.email)) for row in faculty],
     }
     # Keep account and ticket records intact, but retire access and live roster membership.
@@ -445,7 +445,7 @@ def dashboard(request, is_history=False):
                         student_edit_form.save()
                         if profile:
                             profile.user.username = student.tupc_id
-                            profile.user.first_name, _, profile.user.last_name = student.name.partition(' ')
+                            profile.user.first_name, profile.user.last_name = student.account_names
                             profile.user.first_name = profile.user.first_name[:150]
                             profile.user.last_name = profile.user.last_name[:150]
                             profile.user.save(update_fields=['username', 'first_name', 'last_name'])
@@ -548,7 +548,7 @@ def dashboard(request, is_history=False):
             # Older ceremonies have ticket records but no saved eligibility snapshot.
             students = Student.objects.select_related('profile').filter(profile__user__tickets__ceremony=ceremony, profile__user__tickets__ticket_type=Ticket.TicketType.STUDENT).distinct().order_by('tupc_id')
     ticket_table = dashboard_table(request, ticket_list, 'tickets', 'Ticket audit', ['code', 'owner__username', 'owner__first_name', 'owner__last_name', 'owner__email', 'ticket_type'])
-    student_table = dashboard_table(request, students, 'students', 'Eligible students', ['tupc_id', 'name', 'course', 'section'])
+    student_table = dashboard_table(request, students, 'students', 'Eligible students', ['tupc_id', 'name', 'program_section'])
     faculty_table = dashboard_table(request, faculty_accounts, 'faculty', 'Faculty attendees', ['employee_id', 'name', 'department', 'campus', 'user__email'])
     admission_rows = GateAdmission.objects.filter(ticket__ceremony=ceremony).select_related('ticket__owner', 'operator').order_by('-created_at', '-pk') if is_history and ceremony else GateAdmission.objects.none()
     entry_table = dashboard_table(request, admission_rows, 'entries', 'Entry log', ['ticket__code', 'ticket__guest_name', 'ticket__owner__username', 'ticket__owner__first_name', 'ticket__owner__last_name', 'direction', 'operator__username'])
@@ -573,5 +573,5 @@ def check_student(request):
     student = Student.objects.filter(tupc_id=request.POST.get('tupc_id', '').strip().upper(), is_active=True, archived_ceremony__isnull=True).first()
     if not student or User.objects.filter(username__iexact=student.tupc_id).exists():
         return JsonResponse({'error': 'ID unavailable for registration. Check with the administrator or sign in if you already have an account.'}, status=400)
-    first_name, _, last_name = student.name.partition(' ')
-    return JsonResponse({'first_name': first_name, 'last_name': last_name, 'course': student.course, 'section': student.section})
+    first_name, last_name = student.account_names
+    return JsonResponse({'first_name': first_name, 'last_name': last_name, 'program_section': student.program_section})
